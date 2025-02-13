@@ -1,4 +1,4 @@
-package pws.lib;
+package org.pwman;
 
 import java.util.ArrayList;
 import java.util.HashMap;
