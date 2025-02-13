@@ -1,4 +1,4 @@
-package pws.lib;
+package org.pwman;
 
 public interface Resource {
 
