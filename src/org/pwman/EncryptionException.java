@@ -1,4 +1,4 @@
-package pws.lib;
+package org.pwman;
 
 public class EncryptionException extends RuntimeException {
 
