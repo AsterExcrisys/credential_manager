@@ -1,6 +1,4 @@
-package pws.main;
-
-import pws.lib.PasswordManager;
+import org.pwman.PasswordManager;
 
 public class Main {
 
