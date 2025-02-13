@@ -1,4 +1,4 @@
-package pws.lib;
+package org.pwman;
 
 import javax.crypto.*;
 import java.io.ByteArrayOutputStream;
