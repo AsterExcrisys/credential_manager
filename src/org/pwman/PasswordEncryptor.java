@@ -1,4 +1,4 @@
-package pws.lib;
+package org.pwman;
 
 import javax.crypto.*;
 import javax.crypto.spec.IvParameterSpec;
