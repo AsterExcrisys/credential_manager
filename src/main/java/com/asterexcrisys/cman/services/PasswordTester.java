@@ -1,11 +1,12 @@
-package org.pwman.services;
+package com.asterexcrisys.cman.services;
 
-import org.pwman.types.PasswordStrength;
+import com.asterexcrisys.cman.types.PasswordStrength;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
+@SuppressWarnings("unused")
 public class PasswordTester {
 
     private static final HashMap<String, String> requirements = new HashMap<>();

@@ -1,16 +1,16 @@
-package org.pwman.services;
+package com.asterexcrisys.cman.services;
 
-import org.pwman.types.Resource;
+import com.asterexcrisys.cman.types.Resource;
 import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
 import java.security.SecureRandom;
 
+@SuppressWarnings("unused")
 public class PasswordGenerator {
 
     private final SecureRandom random;
 
-    public PasswordGenerator() throws NoSuchAlgorithmException, NoSuchProviderException {
-        random = SecureRandom.getInstance(Resource.GENERATOR_ALGORITHM, Resource.GENERATOR_PROVIDER);
+    public PasswordGenerator() throws NoSuchAlgorithmException {
+        random = SecureRandom.getInstanceStrong();
     }
 
     public PasswordGenerator(byte[] seed) {
@@ -44,7 +44,7 @@ public class PasswordGenerator {
     }
 
     public String generate() {
-        return generate(Resource.DEFAULT_LENGTH);
+        return generate(Resource.DEFAULT_PASSWORD_SIZE);
     }
 
     private String shuffle(String password) {
