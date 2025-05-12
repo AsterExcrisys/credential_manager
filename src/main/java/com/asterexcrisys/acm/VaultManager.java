@@ -59,6 +59,7 @@ public class VaultManager implements AutoCloseable {
     }
 
     public boolean setVault(String name, String password) {
+        // TODO: implement the change password method
         return false;
     }
 

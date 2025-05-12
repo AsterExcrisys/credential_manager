@@ -19,7 +19,7 @@ public class PasswordTester {
         ADVANTAGES.put("^(.*[a-z].*){5,}$", "Should have five or more lower-case letters");
         ADVANTAGES.put("^(.*[A-Z].*)+$", "Should have one or more upper-case letters");
         ADVANTAGES.put("^(.*[0-9].*){3,}$", "Should have three or more decimal numbers");
-        ADVANTAGES.put("^(.*[\\-+.*^$;,!£%&=@#_<>].*){1,}$", "Should have one or more special characters");
+        ADVANTAGES.put("^(.*[\\-+.*^$;,!£%&=@#_<>].*)+$", "Should have one or more special characters");
         ADVANTAGES.put("^.{12,}$", "Should have twelve or more total characters");
         DISADVANTAGES.put("^.*[a-zA-Z]{8,}.*$", "Should not have eight or more consecutive lower/upper-case letters");
         DISADVANTAGES.put("^.*[0-9]{6,}.*$", "Should not have six or more consecutive decimal numbers");

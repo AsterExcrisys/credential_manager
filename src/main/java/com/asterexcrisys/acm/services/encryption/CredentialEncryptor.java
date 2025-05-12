@@ -1,5 +1,6 @@
 package com.asterexcrisys.acm.services.encryption;
 
+import com.asterexcrisys.acm.constants.Encryption;
 import com.asterexcrisys.acm.exceptions.EncryptionException;
 import javax.crypto.*;
 import javax.crypto.spec.SecretKeySpec;
@@ -43,8 +44,8 @@ public final class CredentialEncryptor implements Encryptor {
 
     private Optional<SecretKey> generateKey() {
         try {
-            KeyGenerator generator = KeyGenerator.getInstance("AES");
-            generator.init(256);
+            KeyGenerator generator = KeyGenerator.getInstance(Encryption.GENERATOR_ALGORITHM);
+            generator.init(Encryption.KEY_SIZE);
             return Optional.ofNullable(generator.generateKey());
         } catch (NoSuchAlgorithmException | InvalidParameterException e) {
             return Optional.empty();
@@ -53,7 +54,7 @@ public final class CredentialEncryptor implements Encryptor {
 
     private static SecretKey generateKey(String sealedKey) {
         byte[] decodedKey = Base64.getDecoder().decode(sealedKey);
-        return new SecretKeySpec(decodedKey, 0, decodedKey.length, "AES");
+        return new SecretKeySpec(decodedKey, 0, decodedKey.length, Encryption.GENERATOR_ALGORITHM);
     }
 
 }

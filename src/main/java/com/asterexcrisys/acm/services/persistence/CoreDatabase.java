@@ -1,5 +1,6 @@
 package com.asterexcrisys.acm.services.persistence;
 
+import com.asterexcrisys.acm.constants.Persistence;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -30,7 +31,7 @@ public final class CoreDatabase implements Database {
     public boolean connect() {
         try {
             Files.createDirectories(databasePath.getParent());
-            Class.forName("org.sqlite.JDBC");
+            Class.forName(Persistence.JDBC_DRIVER);
             connection = DriverManager.getConnection(String.format("jdbc:sqlite:%s", databasePath.toAbsolutePath()));
             try (Statement stmt = connection.createStatement()) {
                 stmt.execute(String.format("PRAGMA key = '%s';", masterKey));

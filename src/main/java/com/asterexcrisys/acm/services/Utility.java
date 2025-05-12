@@ -1,5 +1,7 @@
 package com.asterexcrisys.acm.services;
 
+import com.asterexcrisys.acm.constants.Global;
+import com.asterexcrisys.acm.constants.Hashing;
 import org.bouncycastle.crypto.generators.Argon2BytesGenerator;
 import org.bouncycastle.crypto.params.Argon2Parameters;
 import org.bouncycastle.crypto.params.Argon2Parameters.Builder;
@@ -25,14 +27,14 @@ public final class Utility {
         if (data == null || data.isBlank()) {
             return Optional.empty();
         }
-        byte[] salt = new byte[16];
+        byte[] salt = new byte[Hashing.SALT_SIZE];
         Builder builder = new Builder(Argon2Parameters.ARGON2_id)
                 .withVersion(Argon2Parameters.ARGON2_VERSION_13)
-                .withIterations(16)
-                .withMemoryAsKB(262144)
-                .withParallelism(4)
+                .withIterations(Hashing.ITERATION_COUNT)
+                .withMemoryAsKB(Hashing.MEMORY_USAGE)
+                .withParallelism(Hashing.PARALLELISM_COUNT)
                 .withSalt(salt);
-        byte[] result = new byte[32];
+        byte[] result = new byte[Hashing.HASH_SIZE];
         Argon2BytesGenerator generator = new Argon2BytesGenerator();
         generator.init(builder.build());
         generator.generateBytes(data.getBytes(StandardCharsets.UTF_8), result, 0, result.length);
@@ -43,16 +45,16 @@ public final class Utility {
         if (data == null || hash == null || data.isBlank() || hash.isBlank()) {
             return false;
         }
-        byte[] salt = new byte[16];
+        byte[] salt = new byte[Hashing.SALT_SIZE];
         Builder builder = new Builder(Argon2Parameters.ARGON2_id)
                 .withVersion(Argon2Parameters.ARGON2_VERSION_13)
-                .withIterations(16)
-                .withMemoryAsKB(262144)
-                .withParallelism(4)
+                .withIterations(Hashing.ITERATION_COUNT)
+                .withMemoryAsKB(Hashing.MEMORY_USAGE)
+                .withParallelism(Hashing.PARALLELISM_COUNT)
                 .withSalt(salt);
+        byte[] result = new byte[Hashing.HASH_SIZE];
         Argon2BytesGenerator verifier = new Argon2BytesGenerator();
         verifier.init(builder.build());
-        byte[] result = new byte[32];
         verifier.generateBytes(data.getBytes(StandardCharsets.UTF_8), result, 0, result.length);
         return Base64.getEncoder().encodeToString(result).equals(hash);
     }
@@ -62,8 +64,8 @@ public final class Utility {
             return Optional.empty();
         }
         try {
-            KeySpec keySpec = new PBEKeySpec(data.toCharArray(), salt, 1000000, 256);
-            SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+            KeySpec keySpec = new PBEKeySpec(data.toCharArray(), salt, Hashing.KEY_ITERATION_COUNT, Hashing.KEY_SIZE);
+            SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance(Hashing.KEY_DERIVATION_ALGORITHM);
             return Optional.ofNullable(Base64.getEncoder().encodeToString(secretKeyFactory.generateSecret(keySpec).getEncoded()));
         } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
             return Optional.empty();
@@ -72,7 +74,7 @@ public final class Utility {
 
     public static String getCurrentDate() {
         LocalDateTime now = LocalDateTime.now();
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(Global.DATE_FORMAT);
         return now.format(formatter);
     }
 

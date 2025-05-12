@@ -1,5 +1,6 @@
 package com.asterexcrisys.acm.services.encryption;
 
+import com.asterexcrisys.acm.constants.Hashing;
 import com.asterexcrisys.acm.exceptions.DerivationException;
 import javax.crypto.*;
 import javax.crypto.spec.PBEKeySpec;
@@ -18,7 +19,7 @@ public final class KeyEncryptor implements Encryptor {
     private final CoreEncryptor encryptor;
 
     public KeyEncryptor(String password) throws NullPointerException, DerivationException, NoSuchAlgorithmException {
-        salt = new byte[16];
+        salt = new byte[Hashing.SALT_SIZE];
         SecureRandom.getInstanceStrong().nextBytes(salt);
         encryptor = new CoreEncryptor(deriveKey(Objects.requireNonNull(password), salt).orElseThrow(DerivationException::new));
     }
@@ -46,8 +47,8 @@ public final class KeyEncryptor implements Encryptor {
 
     private static Optional<SecretKey> deriveKey(String password, byte[] salt) {
         try {
-            KeySpec keySpec = new PBEKeySpec(password.toCharArray(), salt, 1000000, 256);
-            SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+            KeySpec keySpec = new PBEKeySpec(password.toCharArray(), salt, Hashing.KEY_ITERATION_COUNT, Hashing.KEY_SIZE);
+            SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance(Hashing.KEY_DERIVATION_ALGORITHM);
             return Optional.ofNullable(secretKeyFactory.generateSecret(keySpec));
         } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
             return Optional.empty();
