@@ -1,12 +1,16 @@
-package com.asterexcrisys.cman.services;
+package com.asterexcrisys.acm.services.utility;
 
-import com.asterexcrisys.cman.types.Resource;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 
 @SuppressWarnings("unused")
 public class PasswordGenerator {
 
+    private static final int DEFAULT_PASSWORD_SIZE = 12;
+    private static final String LOWERCASE_LETTERS = "abcdefghijklmnopqrstuvwxyz";
+    private static final String UPPERCASE_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    private static final String DECIMAL_NUMBERS = "0123456789";
+    private static final String SPECIAL_CHARACTERS = "-+.*^$;,!£%&=@#_<>";
     private final SecureRandom random;
 
     public PasswordGenerator() throws NoSuchAlgorithmException {
@@ -25,26 +29,26 @@ public class PasswordGenerator {
         int a = 4 * unit, b = 2 * unit, c = 3 * unit, d = length - a - b - c;
         StringBuilder password = new StringBuilder();
         for (int i = 0; i < a; i++) {
-            index = Math.abs(random.nextInt() % Resource.LOWERCASE_LETTERS.length());
-            password.append(Resource.LOWERCASE_LETTERS.charAt(index));
+            index = Math.abs(random.nextInt() % LOWERCASE_LETTERS.length());
+            password.append(LOWERCASE_LETTERS.charAt(index));
         }
         for (int i = 0; i < b; i++) {
-            index = Math.abs(random.nextInt() % Resource.UPPERCASE_LETTERS.length());
-            password.append(Resource.UPPERCASE_LETTERS.charAt(index));
+            index = Math.abs(random.nextInt() % UPPERCASE_LETTERS.length());
+            password.append(UPPERCASE_LETTERS.charAt(index));
         }
         for (int i = 0; i < c; i++) {
-            index = Math.abs(random.nextInt() % Resource.DECIMAL_NUMBERS.length());
-            password.append(Resource.DECIMAL_NUMBERS.charAt(index));
+            index = Math.abs(random.nextInt() % DECIMAL_NUMBERS.length());
+            password.append(DECIMAL_NUMBERS.charAt(index));
         }
         for (int i = 0; i < d; i++) {
-            index = Math.abs(random.nextInt() % Resource.SPECIAL_CHARACTERS.length());
-            password.append(Resource.SPECIAL_CHARACTERS.charAt(index));
+            index = Math.abs(random.nextInt() % SPECIAL_CHARACTERS.length());
+            password.append(SPECIAL_CHARACTERS.charAt(index));
         }
         return shuffle(password.toString());
     }
 
     public String generate() {
-        return generate(Resource.DEFAULT_PASSWORD_SIZE);
+        return generate(DEFAULT_PASSWORD_SIZE);
     }
 
     private String shuffle(String password) {

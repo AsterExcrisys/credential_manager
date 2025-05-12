@@ -1,4 +1,4 @@
-package com.asterexcrisys.cman.types;
+package com.asterexcrisys.acm.types.utility;
 
 @SuppressWarnings("unused")
 public record Pair<F, S>(F first, S second) {

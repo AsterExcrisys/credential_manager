@@ -1,6 +1,6 @@
-package com.asterexcrisys.cman.services;
+package com.asterexcrisys.acm.services.encryption;
 
-import com.asterexcrisys.cman.exceptions.DerivationException;
+import com.asterexcrisys.acm.exceptions.DerivationException;
 import javax.crypto.*;
 import javax.crypto.spec.PBEKeySpec;
 import java.security.NoSuchAlgorithmException;
@@ -12,19 +12,19 @@ import java.util.Objects;
 import java.util.Optional;
 
 @SuppressWarnings("unused")
-public class KeyEncryptor implements Encryptor {
+public final class KeyEncryptor implements Encryptor {
 
     private final byte[] salt;
     private final CoreEncryptor encryptor;
 
-    public KeyEncryptor(String password) throws DerivationException, NoSuchAlgorithmException {
+    public KeyEncryptor(String password) throws NullPointerException, DerivationException, NoSuchAlgorithmException {
         salt = new byte[16];
         SecureRandom.getInstanceStrong().nextBytes(salt);
         encryptor = new CoreEncryptor(deriveKey(Objects.requireNonNull(password), salt).orElseThrow(DerivationException::new));
     }
 
-    public KeyEncryptor(String password, byte[] salt) throws DerivationException {
-        this.salt = Objects.requireNonNull(salt);
+    public KeyEncryptor(String password, String sealedSalt) throws NullPointerException, DerivationException {
+        this.salt = Base64.getDecoder().decode(Objects.requireNonNull(sealedSalt));
         encryptor = new CoreEncryptor(deriveKey(Objects.requireNonNull(password), this.salt).orElseThrow(DerivationException::new));
     }
 

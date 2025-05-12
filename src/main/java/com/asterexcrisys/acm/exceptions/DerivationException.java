@@ -1,4 +1,4 @@
-package com.asterexcrisys.cman.exceptions;
+package com.asterexcrisys.acm.exceptions;
 
 @SuppressWarnings("unused")
 public class DerivationException extends RuntimeException {

@@ -1,6 +1,6 @@
-package com.asterexcrisys.cman.services;
+package com.asterexcrisys.acm.services.encryption;
 
-import com.asterexcrisys.cman.types.Pair;
+import com.asterexcrisys.acm.types.utility.Pair;
 import javax.crypto.*;
 import javax.crypto.spec.GCMParameterSpec;
 import java.nio.charset.StandardCharsets;
@@ -14,11 +14,11 @@ import java.util.Objects;
 import java.util.Optional;
 
 @SuppressWarnings("unused")
-public class CoreEncryptor implements Encryptor {
+public final class CoreEncryptor implements Encryptor {
 
     private final SecretKey key;
 
-    public CoreEncryptor(SecretKey key) {
+    public CoreEncryptor(SecretKey key) throws NullPointerException {
         this.key = Objects.requireNonNull(key);
     }
 
@@ -42,11 +42,11 @@ public class CoreEncryptor implements Encryptor {
             return Optional.empty();
         }
         try {
-            byte[] vector = new byte[12];
+            byte[] vector = new byte[16];
             SecureRandom.getInstanceStrong().nextBytes(vector);
             Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
             cipher.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(128, vector));
-            byte[] result = construct(vector, cipher.doFinal(data.getBytes()));
+            byte[] result = construct(vector, cipher.doFinal(data.getBytes(StandardCharsets.UTF_8)));
             return Optional.ofNullable(Base64.getEncoder().encodeToString(result));
         } catch (NoSuchPaddingException | NoSuchAlgorithmException | InvalidAlgorithmParameterException |
                  IllegalBlockSizeException | InvalidKeyException | BadPaddingException e) {
@@ -59,7 +59,7 @@ public class CoreEncryptor implements Encryptor {
             return Optional.empty();
         }
         try {
-            Pair<byte[], byte[]> pair = deconstruct(Base64.getDecoder().decode(data), 12);
+            Pair<byte[], byte[]> pair = deconstruct(Base64.getDecoder().decode(data), 16);
             Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
             cipher.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(128, pair.first()));
             byte[] result = cipher.doFinal(pair.second());

@@ -1,4 +1,4 @@
-package com.asterexcrisys.cman.types;
+package com.asterexcrisys.acm.types.utility;
 
 @SuppressWarnings("unused")
 public enum PasswordStrength {

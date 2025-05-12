@@ -1,6 +1,6 @@
-package com.asterexcrisys.cman.services;
+package com.asterexcrisys.acm.services.encryption;
 
-import com.asterexcrisys.cman.exceptions.EncryptionException;
+import com.asterexcrisys.acm.exceptions.EncryptionException;
 import javax.crypto.*;
 import javax.crypto.spec.SecretKeySpec;
 import java.security.*;
@@ -9,16 +9,16 @@ import java.util.Objects;
 import java.util.Optional;
 
 @SuppressWarnings("unused")
-public class CredentialEncryptor implements Encryptor {
+public final class CredentialEncryptor implements Encryptor {
 
     private final CoreEncryptor encryptor;
 
-    public CredentialEncryptor() throws EncryptionException {
+    public CredentialEncryptor() throws NullPointerException, EncryptionException {
         encryptor = new CoreEncryptor(generateKey().orElseThrow(EncryptionException::new));
     }
 
-    public CredentialEncryptor(String sealedKey, String algorithm) throws NullPointerException, EncryptionException {
-        encryptor = new CoreEncryptor(generateKey(Objects.requireNonNull(sealedKey), Objects.requireNonNull(algorithm)));
+    public CredentialEncryptor(String sealedKey) throws NullPointerException {
+        encryptor = new CoreEncryptor(generateKey(Objects.requireNonNull(sealedKey)));
     }
 
     public Optional<String> getEncryptedKey(KeyEncryptor encryptor) {
@@ -51,9 +51,9 @@ public class CredentialEncryptor implements Encryptor {
         }
     }
 
-    private static SecretKey generateKey(String sealedKey, String algorithm) {
+    private static SecretKey generateKey(String sealedKey) {
         byte[] decodedKey = Base64.getDecoder().decode(sealedKey);
-        return new SecretKeySpec(decodedKey, 0, decodedKey.length, algorithm);
+        return new SecretKeySpec(decodedKey, 0, decodedKey.length, "AES");
     }
 
 }

@@ -1,7 +1,7 @@
-package com.asterexcrisys.cman.types;
+package com.asterexcrisys.acm.types.encryption;
 
-import com.asterexcrisys.cman.exceptions.EncryptionException;
-import com.asterexcrisys.cman.services.CredentialEncryptor;
+import com.asterexcrisys.acm.exceptions.EncryptionException;
+import com.asterexcrisys.acm.services.encryption.CredentialEncryptor;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -20,8 +20,8 @@ public class Credential {
         this.password = encryptor.encrypt(Objects.requireNonNull(password)).orElseThrow(EncryptionException::new);
     }
 
-    public Credential(String sealedKey, String algorithm, String platform, String username, String password) throws NullPointerException, EncryptionException {
-        encryptor = new CredentialEncryptor(sealedKey, algorithm);
+    public Credential(String sealedKey, String platform, String username, String password) throws NullPointerException, EncryptionException {
+        encryptor = new CredentialEncryptor(sealedKey);
         this.platform = Objects.requireNonNull(platform);
         this.username = Objects.requireNonNull(username);
         this.password = Objects.requireNonNull(password);
