@@ -1,5 +1,4 @@
 import com.asterexcrisys.acm.services.Utility;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -10,6 +9,8 @@ import java.util.logging.Logger;
 
 @SuppressWarnings("unused")
 public class Main {
+
+    // Full Project Name: Aegis Credential Manager
 
     private static final Logger LOGGER = Logger.getLogger(Main.class.getName());
 
