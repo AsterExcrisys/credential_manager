@@ -17,7 +17,7 @@ public class CredentialManager implements AutoCloseable {
 
     private final Vault vault;
     private final CredentialDatabase database;
-    private final PasswordGenerator passwordGenerator;
+    private final PasswordGenerator generator;
 
     public CredentialManager(String name, String password, String sealedSalt) throws NullPointerException, DerivationException, NoSuchAlgorithmException {
         vault = new Vault(name, password, sealedSalt);
@@ -28,7 +28,7 @@ public class CredentialManager implements AutoCloseable {
                         Base64.getDecoder().decode(Objects.requireNonNull(sealedSalt))
                 ).orElseThrow(DerivationException::new)
         );
-        passwordGenerator = new PasswordGenerator();
+        generator = new PasswordGenerator();
     }
 
     public Vault getVault() {
@@ -73,12 +73,16 @@ public class CredentialManager implements AutoCloseable {
         return database.removeCredential(platform);
     }
 
+    public boolean removeAllCredentials() {
+        return database.removeAllCredentials();
+    }
+
     public String generatePassword() {
-        return passwordGenerator.generate();
+        return generator.generate();
     }
 
     public String generatePassword(int length) {
-        return passwordGenerator.generate(length);
+        return generator.generate(length);
     }
 
     public Optional<Pair<PasswordStrength, String[]>> testExistingPassword(String platform) {

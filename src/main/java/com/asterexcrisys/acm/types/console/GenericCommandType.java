@@ -1,53 +1,48 @@
 package com.asterexcrisys.acm.types.console;
 
 import com.asterexcrisys.acm.services.console.GenericValidator;
+import com.asterexcrisys.acm.services.console.IntegerNumberValidator;
 import com.asterexcrisys.acm.services.console.PasswordValidator;
-import com.asterexcrisys.acm.services.console.PathValidator;
 import com.asterexcrisys.acm.services.console.Validator;
 import java.util.Optional;
 
 @SuppressWarnings("unused")
-public enum VaultCommandType implements CommandType {
+public enum GenericCommandType implements CommandType {
 
-    GET(
-            "-g",
-            "get", 2,
-            new Class[]{String.class, String.class},
-            new Validator[]{new GenericValidator(), new PasswordValidator()}
-    ),
-    GET_ALL(
-            "-ga",
-            "getAll", 0,
+    CURRENT_VAULT(
+            "-c",
+            "currentVault",
+            0,
             new Class[]{},
             new Validator[]{}
     ),
-    ADD(
-            "-a",
-            "add",
-            2,
-            new Class[]{String.class, String.class},
-            new Validator[]{new GenericValidator(), new PasswordValidator()}
+    GENERATE_PASSWORD(
+            "-gp",
+            "generatePassword",
+            1,
+            new Class[]{Integer.class},
+            new Validator[]{new IntegerNumberValidator()}
     ),
-    REMOVE(
-            "-r",
-            "remove",
-            2,
-            new Class[]{String.class, String.class},
-            new Validator[]{new GenericValidator(), new PasswordValidator()}
+    TEST_GIVEN(
+            "-tg",
+            "testGiven",
+            1,
+            new Class[]{String.class},
+            new Validator[]{new PasswordValidator()}
     ),
-    IMPORT(
-            "-i",
-            "import",
-            2,
-            new Class[]{String.class, String.class},
-            new Validator[]{new PathValidator(), new PasswordValidator()}
+    TEST_EXISTING(
+            "-te",
+            "testExisting",
+            1,
+            new Class[]{String.class},
+            new Validator[]{new GenericValidator()}
     ),
-    EXPORT(
-            "-e",
-            "export",
-            2,
-            new Class[]{String.class, String.class},
-            new Validator[]{new GenericValidator(), new PasswordValidator()}
+    QUIT(
+            "-q",
+            "quit",
+            0,
+            new Class[]{},
+            new Validator[]{}
     );
 
     private final String shortName;
@@ -56,7 +51,7 @@ public enum VaultCommandType implements CommandType {
     private final Class<?>[] argumentTypes;
     private final Validator[] argumentValidators;
 
-    VaultCommandType(String shortName, String longName, int argumentCount, Class<?>[] argumentTypes, Validator[] argumentValidators) {
+    GenericCommandType(String shortName, String longName, int argumentCount, Class<?>[] argumentTypes, Validator[] argumentValidators) {
         this.shortName = shortName;
         this.longName = longName;
         this.argumentCount = argumentCount;
@@ -88,11 +83,11 @@ public enum VaultCommandType implements CommandType {
         return argumentValidators;
     }
 
-    public static Optional<VaultCommandType> fromValue(String value) {
+    public static Optional<GenericCommandType> fromValue(String value) {
         if (value == null) {
             return Optional.empty();
         }
-        for (VaultCommandType type : VaultCommandType.values()) {
+        for (GenericCommandType type : GenericCommandType.values()) {
             if (type.shortName().equalsIgnoreCase(value) || type.longName().equalsIgnoreCase(value)) {
                 return Optional.of(type);
             }

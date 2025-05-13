@@ -3,6 +3,7 @@ package com.asterexcrisys.acm.types.console;
 import com.asterexcrisys.acm.services.console.GenericValidator;
 import com.asterexcrisys.acm.services.console.PasswordValidator;
 import com.asterexcrisys.acm.services.console.Validator;
+import java.util.Optional;
 
 @SuppressWarnings("unused")
 public enum CredentialCommandType implements CommandType {
@@ -39,6 +40,13 @@ public enum CredentialCommandType implements CommandType {
             1,
             new Class[]{String.class},
             new Validator[]{new GenericValidator()}
+    ),
+    REMOVE_ALL(
+            "-ra",
+            "removeAll",
+            0,
+            new Class[]{},
+            new Validator[]{}
     );
 
     private final String shortName;
@@ -53,6 +61,10 @@ public enum CredentialCommandType implements CommandType {
         this.argumentCount = argumentCount;
         this.argumentTypes = argumentTypes;
         this.argumentValidators = argumentValidators;
+    }
+
+    public boolean is(String command) {
+        return shortName.equalsIgnoreCase(command) || longName.equalsIgnoreCase(command);
     }
 
     public String shortName() {
@@ -73,6 +85,18 @@ public enum CredentialCommandType implements CommandType {
 
     public Validator[] argumentValidators() {
         return argumentValidators;
+    }
+
+    public static Optional<CredentialCommandType> fromValue(String value) {
+        if (value == null) {
+            return Optional.empty();
+        }
+        for (CredentialCommandType type : CredentialCommandType.values()) {
+            if (type.shortName().equalsIgnoreCase(value) || type.longName().equalsIgnoreCase(value)) {
+                return Optional.of(type);
+            }
+        }
+        return Optional.empty();
     }
 
 }

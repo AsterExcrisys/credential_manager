@@ -1,33 +1,33 @@
 package com.asterexcrisys.acm.types.encryption;
 
 import com.asterexcrisys.acm.exceptions.EncryptionException;
-import com.asterexcrisys.acm.services.encryption.CredentialEncryptor;
+import com.asterexcrisys.acm.services.encryption.GenericEncryptor;
 import java.util.Objects;
 import java.util.Optional;
 
 @SuppressWarnings("unused")
 public class Credential {
 
-    private final CredentialEncryptor encryptor;
+    private final GenericEncryptor encryptor;
     private final String platform;
     private final String username;
     private final String password;
 
     public Credential(String platform, String username, String password) throws NullPointerException, EncryptionException {
-        encryptor = new CredentialEncryptor();
+        encryptor = new GenericEncryptor();
         this.platform = Objects.requireNonNull(platform);
         this.username = encryptor.encrypt(Objects.requireNonNull(username)).orElseThrow(EncryptionException::new);
         this.password = encryptor.encrypt(Objects.requireNonNull(password)).orElseThrow(EncryptionException::new);
     }
 
     public Credential(String sealedKey, String platform, String username, String password) throws NullPointerException, EncryptionException {
-        encryptor = new CredentialEncryptor(sealedKey);
+        encryptor = new GenericEncryptor(sealedKey);
         this.platform = Objects.requireNonNull(platform);
         this.username = Objects.requireNonNull(username);
         this.password = Objects.requireNonNull(password);
     }
 
-    public CredentialEncryptor getEncryptor() {
+    public GenericEncryptor getEncryptor() {
         return encryptor;
     }
 

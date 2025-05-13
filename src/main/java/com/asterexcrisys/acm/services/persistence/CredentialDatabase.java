@@ -99,6 +99,16 @@ public final class CredentialDatabase implements Database {
         ) == 1;
     }
 
+    public boolean removeAllCredentials() {
+        Optional<List<String>> credentials = getAllCredentials();
+        if (credentials.isEmpty()) {
+            return false;
+        }
+        return database.executeUpdate(
+                "DELETE FROM credentials;"
+        ) == credentials.get().size();
+    }
+
     public void close() {
         database.close();
     }

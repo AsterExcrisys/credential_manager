@@ -5,6 +5,9 @@ import com.asterexcrisys.acm.services.authentication.Authentication;
 import com.asterexcrisys.acm.services.Utility;
 import com.asterexcrisys.acm.services.persistence.VaultDatabase;
 import com.asterexcrisys.acm.types.encryption.Vault;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 import java.util.List;
@@ -14,25 +17,29 @@ import java.util.Optional;
 public class VaultManager implements AutoCloseable {
 
     private final VaultDatabase database;
-    private CredentialManager credentialManager;
+    private CredentialManager manager;
 
     public VaultManager(String masterKey, String sealedSalt) throws NullPointerException, DerivationException {
         database = new VaultDatabase(Utility.derive(
                 masterKey,
                 Base64.getDecoder().decode(sealedSalt)
         ).orElseThrow(DerivationException::new));
-        credentialManager = null;
+        manager = null;
     }
 
-    public Optional<CredentialManager> getCredentialManager() {
-        if (credentialManager == null) {
+    public Optional<CredentialManager> getManager() {
+        if (manager == null) {
             return Optional.empty();
         }
-        return Optional.of(credentialManager);
+        return Optional.of(manager);
+    }
+
+    public boolean isAuthenticated() {
+        return manager != null;
     }
 
     public boolean authenticate(String name, String password) {
-        if (credentialManager != null) {
+        if (manager != null) {
             return false;
         }
         if (name == null || password == null || name.isBlank() || password.isBlank()) {
@@ -43,7 +50,7 @@ public class VaultManager implements AutoCloseable {
             if (vault.isEmpty()) {
                 return false;
             }
-            credentialManager = new CredentialManager(name, password, vault.get().getEncryptor().getSealedSalt());
+            manager = new CredentialManager(name, password, vault.get().getEncryptor().getSealedSalt());
             return true;
         } catch (NoSuchAlgorithmException e) {
             return false;
@@ -68,21 +75,28 @@ public class VaultManager implements AutoCloseable {
             return false;
         }
         try {
-            database.saveVault(new Vault(name, password));
+            if (!database.saveVault(new Vault(name, password))) {
+                return false;
+            }
+            Files.createDirectories(Paths.get(String.format("./data/%s/", name)));
             return true;
-        } catch (NoSuchAlgorithmException e) {
+        } catch (NoSuchAlgorithmException | IOException e) {
             return false;
         }
     }
 
     public boolean removeVault(String name, String password) {
-        return database.removeVault(name, password);
+        if (!database.removeVault(name, password)) {
+            return false;
+        }
+        Utility.deleteRecursively(Paths.get(String.format("./data/%s/", name)));
+        return true;
     }
 
     public void close() {
         database.close();
-        if (credentialManager != null) {
-            credentialManager.close();
+        if (manager != null) {
+            manager.close();
         }
     }
 

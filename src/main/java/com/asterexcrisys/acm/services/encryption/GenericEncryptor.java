@@ -10,15 +10,15 @@ import java.util.Objects;
 import java.util.Optional;
 
 @SuppressWarnings("unused")
-public final class CredentialEncryptor implements Encryptor {
+public final class GenericEncryptor implements Encryptor {
 
     private final CoreEncryptor encryptor;
 
-    public CredentialEncryptor() throws NullPointerException, EncryptionException {
+    public GenericEncryptor() throws NullPointerException, EncryptionException {
         encryptor = new CoreEncryptor(generateKey().orElseThrow(EncryptionException::new));
     }
 
-    public CredentialEncryptor(String sealedKey) throws NullPointerException {
+    public GenericEncryptor(String sealedKey) throws NullPointerException {
         encryptor = new CoreEncryptor(generateKey(Objects.requireNonNull(sealedKey)));
     }
 

@@ -2,18 +2,26 @@ package com.asterexcrisys.acm.services;
 
 import com.asterexcrisys.acm.constants.Global;
 import com.asterexcrisys.acm.constants.Hashing;
+import com.asterexcrisys.acm.types.console.CommandType;
+import com.asterexcrisys.acm.types.console.CredentialCommandType;
+import com.asterexcrisys.acm.types.console.GenericCommandType;
+import com.asterexcrisys.acm.types.console.VaultCommandType;
 import org.bouncycastle.crypto.generators.Argon2BytesGenerator;
 import org.bouncycastle.crypto.params.Argon2Parameters;
 import org.bouncycastle.crypto.params.Argon2Parameters.Builder;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
+import java.io.File;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
+import java.util.Objects;
 import java.util.Optional;
 
 @SuppressWarnings("unused")
@@ -21,6 +29,27 @@ public final class Utility {
 
     private Utility() {
         // This class should not be instantiable
+    }
+
+    public static String getCurrentDate() {
+        LocalDateTime now = LocalDateTime.now();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(Global.DATE_FORMAT);
+        return now.format(formatter);
+    }
+
+    public static boolean deleteRecursively(Path path) {
+        if (Files.exists(path) && Files.isDirectory(path)) {
+            for (File file : Objects.requireNonNull(path.toFile().listFiles())) {
+                if (!deleteRecursively(file.toPath())) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        if (Files.exists(path) && Files.isRegularFile(path)) {
+            return path.toFile().delete();
+        }
+        return false;
     }
 
     public static Optional<String> hash(String data) {
@@ -72,10 +101,32 @@ public final class Utility {
         }
     }
 
-    public static String getCurrentDate() {
-        LocalDateTime now = LocalDateTime.now();
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(Global.DATE_FORMAT);
-        return now.format(formatter);
+    public static final class NonInteractiveShell {
+
+        private NonInteractiveShell() {
+            // This class should not be instantiable
+        }
+
+        public static Optional<? extends CommandType> fromValue(String value) {
+            return VaultCommandType.fromValue(value);
+        }
+
+    }
+
+    public static final class InteractiveShell {
+
+        private InteractiveShell() {
+            // This class should not be instantiable
+        }
+
+        public static Optional<? extends CommandType> fromValue(String value) {
+            Optional<GenericCommandType> type = GenericCommandType.fromValue(value);
+            if (type.isPresent()) {
+                return type;
+            }
+            return CredentialCommandType.fromValue(value);
+        }
+
     }
 
 }
