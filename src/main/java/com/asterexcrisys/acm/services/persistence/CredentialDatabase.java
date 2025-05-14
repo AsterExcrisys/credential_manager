@@ -1,7 +1,13 @@
 package com.asterexcrisys.acm.services.persistence;
 
+import com.asterexcrisys.acm.constants.Persistence;
+import com.asterexcrisys.acm.exceptions.EncryptionException;
+import com.asterexcrisys.acm.services.Utility;
 import com.asterexcrisys.acm.services.encryption.KeyEncryptor;
 import com.asterexcrisys.acm.types.encryption.Credential;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -15,7 +21,7 @@ public final class CredentialDatabase implements Database {
     private final CoreDatabase database;
 
     public CredentialDatabase(String vaultName, String masterKey) throws NullPointerException {
-        database = new CoreDatabase(vaultName, "credentials", masterKey);
+        database = new CoreDatabase(vaultName, Persistence.CREDENTIAL_DATABASE, masterKey);
     }
 
     public boolean connect() {
@@ -32,12 +38,52 @@ public final class CredentialDatabase implements Database {
         ) == 0;
     }
 
+    public boolean dropTable() {
+        return database.executeUpdate("DROP TABLE IF EXISTS credentials;") == 0;
+    }
+
+    public boolean backupTo(Path file) {
+        if (Utility.isFileInDirectory(Paths.get("./data/"), file)) {
+            return false;
+        }
+        if (!Files.isWritable(file)) {
+            return false;
+        }
+        return database.executeUpdate("ATTACH ? AS file;", file.toAbsolutePath().toString()) == 0
+                && database.executeUpdate("BACKUP TO file;") == 0
+                && database.executeUpdate("DETACH file;") == 0;
+    }
+
+    public boolean restoreFrom(Path file) {
+        if (Utility.isFileInDirectory(Paths.get("./data/"), file)) {
+            return false;
+        }
+        if (!Files.isReadable(file)) {
+            return false;
+        }
+        return database.executeUpdate("ATTACH ? AS file;", file.toAbsolutePath().toString()) == 0
+                && database.executeUpdate("RESTORE FROM file;") == 0
+                && database.executeUpdate("DETACH file;") == 0;
+    }
+
+    public boolean mergeFrom(Path file) {
+        if (Utility.isFileInDirectory(Paths.get("./data/"), file)) {
+            return false;
+        }
+        if (!Files.isReadable(file)) {
+            return false;
+        }
+        return database.executeUpdate("ATTACH ? AS file;", file.toAbsolutePath().toString()) == 0
+                && database.executeUpdate("INSERT OR REPLACE INTO credentials (platform, username, password, key) VALUES (SELECT c.platform, c.username, c.password, c.key FROM file.credentials AS c);") == 0
+                && database.executeUpdate("DETACH file;") == 0;
+    }
+
     public Optional<Credential> getCredential(String platform, KeyEncryptor encryptor) {
         if (platform == null || encryptor == null) {
             return Optional.empty();
         }
         try (ResultSet resultSet = database.executeQuery(
-                "SELECT c.platform, c.username, c.password, c.key FROM credentials AS c WHERE platform = ?;",
+                "SELECT c.platform, c.username, c.password, c.key FROM credentials AS c WHERE c.platform = ?;",
                 platform
         )) {
             if (resultSet == null || !resultSet.next()) {
@@ -53,7 +99,7 @@ public final class CredentialDatabase implements Database {
                     resultSet.getString("username"),
                     resultSet.getString("password")
             ));
-        } catch (SQLException e) {
+        } catch (SQLException | EncryptionException e) {
             LOGGER.severe("Error retrieving credential: " + e.getMessage());
             return Optional.empty();
         }
@@ -81,11 +127,11 @@ public final class CredentialDatabase implements Database {
             return false;
         }
         return database.executeUpdate(
-                "INSERT OR REPLACE INTO credentials (key, platform, username, password) VALUES (?, ?, ?, ?);",
-                key.get(),
+                "INSERT OR REPLACE INTO credentials (platform, username, password, key) VALUES (?, ?, ?, ?);",
                 credential.getPlatform(),
                 credential.getEncryptedUsername(),
-                credential.getEncryptedPassword()
+                credential.getEncryptedPassword(),
+                key.get()
         ) == 1;
     }
 

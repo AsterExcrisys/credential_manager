@@ -1,16 +1,15 @@
 package com.asterexcrisys.acm.types.console;
 
-import com.asterexcrisys.acm.services.console.GenericValidator;
-import com.asterexcrisys.acm.services.console.IntegerNumberValidator;
-import com.asterexcrisys.acm.services.console.PasswordValidator;
-import com.asterexcrisys.acm.services.console.Validator;
+import com.asterexcrisys.acm.services.console.validators.GenericValidator;
+import com.asterexcrisys.acm.services.console.validators.IntegerNumberValidator;
+import com.asterexcrisys.acm.services.console.validators.Validator;
 import java.util.Optional;
 
 @SuppressWarnings("unused")
 public enum GenericCommandType implements CommandType {
 
     CURRENT_VAULT(
-            "-c",
+            "-cv",
             "currentVault",
             0,
             new Class[]{},
@@ -23,23 +22,23 @@ public enum GenericCommandType implements CommandType {
             new Class[]{Integer.class},
             new Validator[]{new IntegerNumberValidator()}
     ),
-    TEST_GIVEN(
-            "-tg",
-            "testGiven",
-            1,
-            new Class[]{String.class},
-            new Validator[]{new PasswordValidator()}
-    ),
     TEST_EXISTING(
-            "-te",
-            "testExisting",
+            "-tep",
+            "testExistingPassword",
             1,
             new Class[]{String.class},
             new Validator[]{new GenericValidator()}
     ),
     QUIT(
-            "-q",
-            "quit",
+            "-qs",
+            "quitShell",
+            0,
+            new Class[]{},
+            new Validator[]{}
+    ),
+    EXIT(
+            "-es",
+            "exitShell",
             0,
             new Class[]{},
             new Validator[]{}

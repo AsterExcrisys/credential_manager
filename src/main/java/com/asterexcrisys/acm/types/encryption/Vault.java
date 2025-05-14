@@ -20,7 +20,7 @@ public class Vault {
         this.password = Utility.hash(Objects.requireNonNull(password)).orElseThrow(HashingException::new);
     }
 
-    public Vault(String name, String password, String sealedSalt) throws NoSuchAlgorithmException {
+    public Vault(String name, String password, String sealedSalt) throws DerivationException, HashingException, NoSuchAlgorithmException {
         encryptor = new KeyEncryptor(password, sealedSalt);
         this.name = Objects.requireNonNull(name);
         this.password = Utility.hash(Objects.requireNonNull(password)).orElseThrow(HashingException::new);

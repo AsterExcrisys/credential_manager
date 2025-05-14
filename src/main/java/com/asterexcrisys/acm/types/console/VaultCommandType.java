@@ -1,53 +1,60 @@
 package com.asterexcrisys.acm.types.console;
 
-import com.asterexcrisys.acm.services.console.GenericValidator;
-import com.asterexcrisys.acm.services.console.PasswordValidator;
-import com.asterexcrisys.acm.services.console.PathValidator;
-import com.asterexcrisys.acm.services.console.Validator;
+import com.asterexcrisys.acm.services.console.validators.GenericValidator;
+import com.asterexcrisys.acm.services.console.validators.PasswordValidator;
+import com.asterexcrisys.acm.services.console.validators.PathValidator;
+import com.asterexcrisys.acm.services.console.validators.Validator;
 import java.util.Optional;
 
 @SuppressWarnings("unused")
 public enum VaultCommandType implements CommandType {
 
     GET(
-            "-g",
-            "get", 2,
+            "-gv",
+            "getVault", 2,
             new Class[]{String.class, String.class},
             new Validator[]{new GenericValidator(), new PasswordValidator()}
     ),
     GET_ALL(
-            "-ga",
-            "getAll", 0,
+            "-gav",
+            "getAllVaults", 0,
             new Class[]{},
             new Validator[]{}
     ),
     ADD(
-            "-a",
-            "add",
+            "-av",
+            "addVault",
             2,
             new Class[]{String.class, String.class},
             new Validator[]{new GenericValidator(), new PasswordValidator()}
     ),
     REMOVE(
-            "-r",
-            "remove",
+            "-rv",
+            "removeVault",
             2,
             new Class[]{String.class, String.class},
             new Validator[]{new GenericValidator(), new PasswordValidator()}
     ),
     IMPORT(
-            "-i",
-            "import",
+            "-iv",
+            "importVault",
             2,
             new Class[]{String.class, String.class},
             new Validator[]{new PathValidator(), new PasswordValidator()}
     ),
     EXPORT(
-            "-e",
-            "export",
+            "-ev",
+            "exportVault",
             2,
             new Class[]{String.class, String.class},
             new Validator[]{new GenericValidator(), new PasswordValidator()}
+    ),
+    TEST_GIVEN(
+            "-tgv",
+            "testGivenPassword",
+            1,
+            new Class[]{String.class},
+            new Validator[]{new PasswordValidator()}
     );
 
     private final String shortName;

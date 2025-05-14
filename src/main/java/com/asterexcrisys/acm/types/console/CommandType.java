@@ -1,6 +1,6 @@
 package com.asterexcrisys.acm.types.console;
 
-import com.asterexcrisys.acm.services.console.Validator;
+import com.asterexcrisys.acm.services.console.validators.Validator;
 import java.util.Optional;
 
 @SuppressWarnings("unused")

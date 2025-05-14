@@ -52,6 +52,16 @@ public final class Utility {
         return false;
     }
 
+    public static boolean isFileInDirectory(Path directory, Path file) {
+        if (!Files.exists(directory) || !Files.isDirectory(directory)) {
+            return false;
+        }
+        if (!Files.exists(file) || !Files.isRegularFile(file)) {
+            return false;
+        }
+        return file.toAbsolutePath().startsWith(directory.toAbsolutePath());
+    }
+
     public static Optional<String> hash(String data) {
         if (data == null || data.isBlank()) {
             return Optional.empty();

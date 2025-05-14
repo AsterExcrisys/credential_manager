@@ -1,10 +1,15 @@
 package com.asterexcrisys.acm;
 
+import com.asterexcrisys.acm.exceptions.DatabaseException;
 import com.asterexcrisys.acm.exceptions.DerivationException;
+import com.asterexcrisys.acm.exceptions.HashingException;
 import com.asterexcrisys.acm.services.authentication.Authentication;
 import com.asterexcrisys.acm.services.Utility;
 import com.asterexcrisys.acm.services.persistence.VaultDatabase;
+import com.asterexcrisys.acm.services.utility.PasswordTester;
 import com.asterexcrisys.acm.types.encryption.Vault;
+import com.asterexcrisys.acm.types.utility.Pair;
+import com.asterexcrisys.acm.types.utility.PasswordStrength;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -12,19 +17,22 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
+import java.util.logging.Logger;
 
 @SuppressWarnings("unused")
 public class VaultManager implements AutoCloseable {
 
+    private static final Logger LOGGER = Logger.getLogger(VaultManager.class.getName());
     private final VaultDatabase database;
     private CredentialManager manager;
 
-    public VaultManager(String masterKey, String sealedSalt) throws NullPointerException, DerivationException {
+    public VaultManager(String masterKey, String sealedSalt) throws NullPointerException, DerivationException, DatabaseException {
         database = new VaultDatabase(Utility.derive(
                 masterKey,
                 Base64.getDecoder().decode(sealedSalt)
         ).orElseThrow(DerivationException::new));
         manager = null;
+        initialize();
     }
 
     public Optional<CredentialManager> getManager() {
@@ -52,7 +60,8 @@ public class VaultManager implements AutoCloseable {
             }
             manager = new CredentialManager(name, password, vault.get().getEncryptor().getSealedSalt());
             return true;
-        } catch (NoSuchAlgorithmException e) {
+        } catch (NoSuchAlgorithmException | DerivationException | HashingException | DatabaseException e) {
+            LOGGER.severe("Error authenticating user to vault: " + e.getMessage());
             return false;
         }
     }
@@ -80,7 +89,8 @@ public class VaultManager implements AutoCloseable {
             }
             Files.createDirectories(Paths.get(String.format("./data/%s/", name)));
             return true;
-        } catch (NoSuchAlgorithmException | IOException e) {
+        } catch (NoSuchAlgorithmException | IOException | HashingException | DerivationException e) {
+            LOGGER.severe("Error adding vault: " + e.getMessage());
             return false;
         }
     }
@@ -93,10 +103,24 @@ public class VaultManager implements AutoCloseable {
         return true;
     }
 
+    public Pair<PasswordStrength, String[]> testGivenPassword(String password) {
+        PasswordTester passwordTester = new PasswordTester(password);
+        return new Pair<>(passwordTester.getStrengthGrade(), passwordTester.getSafetyAdvices());
+    }
+
     public void close() {
         database.close();
         if (manager != null) {
             manager.close();
+        }
+    }
+
+    private void initialize() throws DatabaseException {
+        if (!database.connect()) {
+            throw new DatabaseException("Could not connect to database");
+        }
+        if (!database.createTable()) {
+            throw new DatabaseException("Could not create table on database");
         }
     }
 

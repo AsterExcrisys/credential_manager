@@ -1,6 +1,9 @@
 package com.asterexcrisys.acm;
 
+import com.asterexcrisys.acm.exceptions.DatabaseException;
 import com.asterexcrisys.acm.exceptions.DerivationException;
+import com.asterexcrisys.acm.exceptions.EncryptionException;
+import com.asterexcrisys.acm.exceptions.HashingException;
 import com.asterexcrisys.acm.services.Utility;
 import com.asterexcrisys.acm.services.persistence.CredentialDatabase;
 import com.asterexcrisys.acm.services.utility.PasswordGenerator;
@@ -11,15 +14,17 @@ import com.asterexcrisys.acm.types.encryption.Credential;
 import com.asterexcrisys.acm.types.utility.PasswordStrength;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
+import java.util.logging.Logger;
 
 @SuppressWarnings("unused")
 public class CredentialManager implements AutoCloseable {
 
+    private static final Logger LOGGER = Logger.getLogger(CredentialManager.class.getName());
     private final Vault vault;
     private final CredentialDatabase database;
     private final PasswordGenerator generator;
 
-    public CredentialManager(String name, String password, String sealedSalt) throws NullPointerException, DerivationException, NoSuchAlgorithmException {
+    public CredentialManager(String name, String password, String sealedSalt) throws NullPointerException, DerivationException, NoSuchAlgorithmException, HashingException, DatabaseException {
         vault = new Vault(name, password, sealedSalt);
         database = new CredentialDatabase(
                 Objects.requireNonNull(name),
@@ -29,6 +34,7 @@ public class CredentialManager implements AutoCloseable {
                 ).orElseThrow(DerivationException::new)
         );
         generator = new PasswordGenerator();
+        initialize();
     }
 
     public Vault getVault() {
@@ -48,25 +54,35 @@ public class CredentialManager implements AutoCloseable {
         if (credential.isEmpty()) {
             return false;
         }
-        return database.saveCredential(
-                new Credential(
-                        credential.get().getEncryptor().getDecryptedKey(),
-                        credential.get().getPlatform(),
-                        username,
-                        password
-                ),
-                vault.getEncryptor()
-        );
+        try {
+            return database.saveCredential(
+                    new Credential(
+                            credential.get().getEncryptor().getDecryptedKey(),
+                            credential.get().getPlatform(),
+                            username,
+                            password
+                    ),
+                    vault.getEncryptor()
+            );
+        } catch (EncryptionException e) {
+            LOGGER.severe("Error updating credential: " + e.getMessage());
+            return false;
+        }
     }
 
     public boolean addCredential(String platform, String username, String password) {
         if (getCredential(platform).isPresent()) {
             return false;
         }
-        return database.saveCredential(
-                new Credential(platform, username, password),
-                vault.getEncryptor()
-        );
+        try {
+            return database.saveCredential(
+                    new Credential(platform, username, password),
+                    vault.getEncryptor()
+            );
+        } catch (EncryptionException e) {
+            LOGGER.severe("Error adding credential: " + e.getMessage());
+            return false;
+        }
     }
 
     public boolean removeCredential(String platform) {
@@ -98,13 +114,17 @@ public class CredentialManager implements AutoCloseable {
         return Optional.of(new Pair<>(passwordTester.getStrengthGrade(), passwordTester.getSafetyAdvices()));
     }
 
-    public Pair<PasswordStrength, String[]> testGivenPassword(String password) {
-        PasswordTester passwordTester = new PasswordTester(password);
-        return new Pair<>(passwordTester.getStrengthGrade(), passwordTester.getSafetyAdvices());
-    }
-
     public void close() {
         database.close();
+    }
+
+    private void initialize() throws DatabaseException {
+        if (!database.connect()) {
+            throw new DatabaseException("Could not connect to database");
+        }
+        if (!database.createTable()) {
+            throw new DatabaseException("Could not create table on database");
+        }
     }
 
 }

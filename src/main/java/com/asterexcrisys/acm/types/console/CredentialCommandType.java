@@ -1,49 +1,49 @@
 package com.asterexcrisys.acm.types.console;
 
-import com.asterexcrisys.acm.services.console.GenericValidator;
-import com.asterexcrisys.acm.services.console.PasswordValidator;
-import com.asterexcrisys.acm.services.console.Validator;
+import com.asterexcrisys.acm.services.console.validators.GenericValidator;
+import com.asterexcrisys.acm.services.console.validators.PasswordValidator;
+import com.asterexcrisys.acm.services.console.validators.Validator;
 import java.util.Optional;
 
 @SuppressWarnings("unused")
 public enum CredentialCommandType implements CommandType {
 
     GET(
-            "-g",
-            "get", 1,
+            "-gc",
+            "getCredential", 1,
             new Class[]{String.class},
             new Validator[]{new GenericValidator()}
     ),
     GET_ALL(
-            "-ga",
-            "getAll", 0,
+            "-gac",
+            "getAllCredentials", 0,
             new Class[]{},
             new Validator[]{}
     ),
     SET(
-            "-s",
-            "set",
+            "-sc",
+            "setCredential",
             3,
             new Class[]{String.class, String.class, String.class},
             new Validator[]{new GenericValidator(), new GenericValidator(), new PasswordValidator()}
     ),
     ADD(
-            "-a",
-            "add",
+            "-ac",
+            "addCredential",
             3,
             new Class[]{String.class, String.class, String.class},
             new Validator[]{new GenericValidator(), new GenericValidator(), new PasswordValidator()}
     ),
     REMOVE(
-            "-r",
-            "remove",
+            "-rc",
+            "removeCredential",
             1,
             new Class[]{String.class},
             new Validator[]{new GenericValidator()}
     ),
     REMOVE_ALL(
-            "-ra",
-            "removeAll",
+            "-rac",
+            "removeAllCredentials",
             0,
             new Class[]{},
             new Validator[]{}
