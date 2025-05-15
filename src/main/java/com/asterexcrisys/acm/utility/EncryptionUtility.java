@@ -7,7 +7,7 @@ import java.util.Base64;
 import java.util.Optional;
 
 @SuppressWarnings("unused")
-public class EncryptionUtility {
+public final class EncryptionUtility {
 
     private EncryptionUtility() {
         // This class should not be instantiable
