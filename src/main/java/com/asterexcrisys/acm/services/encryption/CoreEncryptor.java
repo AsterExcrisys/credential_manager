@@ -1,15 +1,15 @@
 package com.asterexcrisys.acm.services.encryption;
 
-import com.asterexcrisys.acm.constants.Encryption;
+import com.asterexcrisys.acm.constants.EncryptionConstants;
 import com.asterexcrisys.acm.types.utility.Pair;
 import javax.crypto.*;
 import javax.crypto.spec.GCMParameterSpec;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
-import java.util.Arrays;
 import java.util.Base64;
 import java.util.Objects;
 import java.util.Optional;
@@ -45,12 +45,15 @@ public final class CoreEncryptor implements Encryptor {
             return Optional.empty();
         }
         try {
-            byte[] vector = new byte[Encryption.INITIALIZATION_VECTOR_SIZE];
+            byte[] vector = new byte[EncryptionConstants.INITIALIZATION_VECTOR_SIZE];
             SecureRandom.getInstanceStrong().nextBytes(vector);
-            Cipher cipher = Cipher.getInstance(Encryption.ENCRYPTION_TRANSFORMATION);
-            cipher.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(Encryption.AUTHENTICATION_TAG_SIZE, vector));
-            byte[] result = construct(vector, cipher.doFinal(data.getBytes(StandardCharsets.UTF_8)));
-            return Optional.ofNullable(Base64.getEncoder().encodeToString(result));
+            Cipher cipher = Cipher.getInstance(EncryptionConstants.ENCRYPTION_TRANSFORMATION);
+            cipher.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(EncryptionConstants.AUTHENTICATION_TAG_SIZE, vector));
+            Optional<byte[]> result = construct(vector, cipher.doFinal(data.getBytes(StandardCharsets.UTF_8)));
+            if (result.isEmpty()) {
+                return Optional.empty();
+            }
+            return Optional.ofNullable(Base64.getEncoder().encodeToString(result.get()));
         } catch (NoSuchPaddingException | NoSuchAlgorithmException | InvalidAlgorithmParameterException |
                  IllegalBlockSizeException | InvalidKeyException | BadPaddingException e) {
             LOGGER.severe("Error encrypting data: " + e.getMessage());
@@ -63,10 +66,13 @@ public final class CoreEncryptor implements Encryptor {
             return Optional.empty();
         }
         try {
-            Pair<byte[], byte[]> pair = deconstruct(Base64.getDecoder().decode(data), Encryption.INITIALIZATION_VECTOR_SIZE);
-            Cipher cipher = Cipher.getInstance(Encryption.ENCRYPTION_TRANSFORMATION);
-            cipher.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(Encryption.AUTHENTICATION_TAG_SIZE, pair.first()));
-            byte[] result = cipher.doFinal(pair.second());
+            Optional<Pair<byte[], byte[]>> pair = deconstruct(Base64.getDecoder().decode(data));
+            if (pair.isEmpty()) {
+                return Optional.empty();
+            }
+            Cipher cipher = Cipher.getInstance(EncryptionConstants.ENCRYPTION_TRANSFORMATION);
+            cipher.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(EncryptionConstants.AUTHENTICATION_TAG_SIZE, pair.get().first()));
+            byte[] result = cipher.doFinal(pair.get().second());
             return Optional.of(new String(result, StandardCharsets.UTF_8));
         } catch (NoSuchPaddingException | IllegalBlockSizeException | NoSuchAlgorithmException |
                  InvalidAlgorithmParameterException | BadPaddingException | InvalidKeyException e) {
@@ -75,17 +81,29 @@ public final class CoreEncryptor implements Encryptor {
         }
     }
 
-    private static byte[] construct(byte[] vector, byte[] encryptedData) {
-        byte[] result = new byte[vector.length + encryptedData.length];
-        System.arraycopy(vector, 0, result, 0, vector.length);
-        System.arraycopy(encryptedData, 0, result, vector.length, encryptedData.length);
-        return result;
+    private static Optional<byte[]> construct(byte[] vector, byte[] encryptedData) {
+        if (vector == null || vector.length != EncryptionConstants.INITIALIZATION_VECTOR_SIZE) {
+            return Optional.empty();
+        }
+        if (encryptedData == null || encryptedData.length < 1) {
+            return Optional.empty();
+        }
+        ByteBuffer buffer = ByteBuffer.allocate(vector.length + encryptedData.length);
+        buffer.put(vector);
+        buffer.put(encryptedData);
+        return Optional.of(buffer.array());
     }
 
-    private static Pair<byte[], byte[]> deconstruct(byte[] result, int vectorLength) {
-        byte[] vector = Arrays.copyOfRange(result, 0, vectorLength);
-        byte[] encryptedData = Arrays.copyOfRange(result, vectorLength, result.length);
-        return new Pair<>(vector, encryptedData);
+    private static Optional<Pair<byte[], byte[]>> deconstruct(byte[] result) {
+        if (result == null || result.length <= EncryptionConstants.INITIALIZATION_VECTOR_SIZE) {
+            return Optional.empty();
+        }
+        ByteBuffer buffer = ByteBuffer.wrap(result).asReadOnlyBuffer();
+        byte[] vector = new byte[EncryptionConstants.INITIALIZATION_VECTOR_SIZE];
+        byte[] encryptedData = new byte[result.length - EncryptionConstants.INITIALIZATION_VECTOR_SIZE];
+        buffer.get(vector);
+        buffer.get(encryptedData);
+        return Optional.of(new Pair<>(vector, encryptedData));
     }
 
 }

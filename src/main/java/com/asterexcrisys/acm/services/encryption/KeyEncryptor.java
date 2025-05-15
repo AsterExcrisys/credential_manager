@@ -1,9 +1,11 @@
 package com.asterexcrisys.acm.services.encryption;
 
-import com.asterexcrisys.acm.constants.Hashing;
+import com.asterexcrisys.acm.constants.EncryptionConstants;
+import com.asterexcrisys.acm.constants.HashingConstants;
 import com.asterexcrisys.acm.exceptions.DerivationException;
 import javax.crypto.*;
 import javax.crypto.spec.PBEKeySpec;
+import javax.crypto.spec.SecretKeySpec;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
@@ -11,15 +13,17 @@ import java.security.spec.KeySpec;
 import java.util.Base64;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.logging.Logger;
 
 @SuppressWarnings("unused")
 public final class KeyEncryptor implements Encryptor {
 
+    private static final Logger LOGGER = Logger.getLogger(KeyEncryptor.class.getName());
     private final byte[] salt;
     private final CoreEncryptor encryptor;
 
     public KeyEncryptor(String password) throws NullPointerException, DerivationException, NoSuchAlgorithmException {
-        salt = new byte[Hashing.SALT_SIZE];
+        salt = new byte[HashingConstants.SALT_SIZE];
         SecureRandom.getInstanceStrong().nextBytes(salt);
         encryptor = new CoreEncryptor(deriveKey(Objects.requireNonNull(password), salt).orElseThrow(DerivationException::new));
     }
@@ -45,12 +49,22 @@ public final class KeyEncryptor implements Encryptor {
         return encryptor.decrypt(data);
     }
 
-    private static Optional<SecretKey> deriveKey(String password, byte[] salt) {
+    public static Optional<SecretKey> deriveKey(String password, byte[] salt) {
+        if (password == null || password.isBlank()) {
+            return Optional.empty();
+        }
+        if (salt == null || salt.length != HashingConstants.SALT_SIZE) {
+            return Optional.empty();
+        }
         try {
-            KeySpec keySpec = new PBEKeySpec(password.toCharArray(), salt, Hashing.KEY_ITERATION_COUNT, Hashing.KEY_SIZE);
-            SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance(Hashing.KEY_DERIVATION_ALGORITHM);
-            return Optional.ofNullable(secretKeyFactory.generateSecret(keySpec));
+            KeySpec keySpec = new PBEKeySpec(password.toCharArray(), salt, HashingConstants.KEY_ITERATION_COUNT, HashingConstants.KEY_SIZE);
+            SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance(HashingConstants.KEY_DERIVATION_ALGORITHM);
+            return Optional.of(new SecretKeySpec(
+                    secretKeyFactory.generateSecret(keySpec).getEncoded(),
+                    EncryptionConstants.KEY_GENERATION_ALGORITHM)
+            );
         } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
+            LOGGER.severe("Error deriving key: " + e.getMessage());
             return Optional.empty();
         }
     }

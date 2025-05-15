@@ -6,7 +6,7 @@ import com.asterexcrisys.acm.services.console.validators.Validator;
 import java.util.Optional;
 
 @SuppressWarnings("unused")
-public enum GenericCommandType implements CommandType {
+public enum GenericInteractiveCommandType implements CommandType {
 
     CURRENT_VAULT(
             "-cv",
@@ -50,7 +50,7 @@ public enum GenericCommandType implements CommandType {
     private final Class<?>[] argumentTypes;
     private final Validator[] argumentValidators;
 
-    GenericCommandType(String shortName, String longName, int argumentCount, Class<?>[] argumentTypes, Validator[] argumentValidators) {
+    GenericInteractiveCommandType(String shortName, String longName, int argumentCount, Class<?>[] argumentTypes, Validator[] argumentValidators) {
         this.shortName = shortName;
         this.longName = longName;
         this.argumentCount = argumentCount;
@@ -82,11 +82,11 @@ public enum GenericCommandType implements CommandType {
         return argumentValidators;
     }
 
-    public static Optional<GenericCommandType> fromValue(String value) {
+    public static Optional<GenericInteractiveCommandType> fromValue(String value) {
         if (value == null) {
             return Optional.empty();
         }
-        for (GenericCommandType type : GenericCommandType.values()) {
+        for (GenericInteractiveCommandType type : GenericInteractiveCommandType.values()) {
             if (type.shortName().equalsIgnoreCase(value) || type.longName().equalsIgnoreCase(value)) {
                 return Optional.of(type);
             }

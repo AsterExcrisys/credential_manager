@@ -2,7 +2,7 @@ package com.asterexcrisys.acm.types.encryption;
 
 import com.asterexcrisys.acm.exceptions.DerivationException;
 import com.asterexcrisys.acm.exceptions.HashingException;
-import com.asterexcrisys.acm.services.Utility;
+import com.asterexcrisys.acm.utility.HashingUtility;
 import com.asterexcrisys.acm.services.encryption.KeyEncryptor;
 import java.security.NoSuchAlgorithmException;
 import java.util.Objects;
@@ -17,13 +17,13 @@ public class Vault {
     public Vault(String name, String password) throws NullPointerException, HashingException, DerivationException, NoSuchAlgorithmException {
         encryptor = new KeyEncryptor(password);
         this.name = Objects.requireNonNull(name);
-        this.password = Utility.hash(Objects.requireNonNull(password)).orElseThrow(HashingException::new);
+        this.password = HashingUtility.hashPassword(Objects.requireNonNull(password)).orElseThrow(HashingException::new);
     }
 
-    public Vault(String name, String password, String sealedSalt) throws DerivationException, HashingException, NoSuchAlgorithmException {
+    public Vault(String name, String password, String sealedSalt, String hashedPassword) throws DerivationException, HashingException, NoSuchAlgorithmException {
         encryptor = new KeyEncryptor(password, sealedSalt);
         this.name = Objects.requireNonNull(name);
-        this.password = Utility.hash(Objects.requireNonNull(password)).orElseThrow(HashingException::new);
+        this.password = Objects.requireNonNull(hashedPassword);
     }
 
     public KeyEncryptor getEncryptor() {

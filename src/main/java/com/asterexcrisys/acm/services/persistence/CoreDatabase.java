@@ -1,6 +1,6 @@
 package com.asterexcrisys.acm.services.persistence;
 
-import com.asterexcrisys.acm.constants.Persistence;
+import com.asterexcrisys.acm.constants.PersistenceConstants;
 import org.sqlite.mc.SQLiteMCChacha20Config;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -35,7 +35,7 @@ public final class CoreDatabase implements Database {
         }
         try {
             Files.createDirectories(databasePath.getParent());
-            Class.forName(Persistence.JDBC_DRIVER);
+            Class.forName(PersistenceConstants.JDBC_DRIVER);
             SQLiteMCChacha20Config configuration = SQLiteMCChacha20Config.getDefault();
             configuration.withKey(masterKey);
             connection = DriverManager.getConnection(

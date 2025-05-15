@@ -1,10 +1,11 @@
 package com.asterexcrisys.acm.services.persistence;
 
-import com.asterexcrisys.acm.constants.Persistence;
+import com.asterexcrisys.acm.constants.PersistenceConstants;
 import com.asterexcrisys.acm.exceptions.DerivationException;
 import com.asterexcrisys.acm.exceptions.HashingException;
-import com.asterexcrisys.acm.services.Utility;
+import com.asterexcrisys.acm.utility.HashingUtility;
 import com.asterexcrisys.acm.types.encryption.Vault;
+import com.asterexcrisys.acm.utility.PathUtility;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -23,7 +24,7 @@ public final class VaultDatabase implements Database {
     private final CoreDatabase database;
 
     public VaultDatabase(String masterKey) throws NullPointerException {
-        database = new CoreDatabase(Persistence.VAULT_DATABASE, masterKey);
+        database = new CoreDatabase(PersistenceConstants.VAULT_DATABASE, masterKey);
     }
 
     public boolean connect() {
@@ -45,7 +46,7 @@ public final class VaultDatabase implements Database {
     }
 
     public boolean backupTo(Path file) {
-        if (Utility.isFileInDirectory(Paths.get("./data/"), file)) {
+        if (PathUtility.isFileInDirectory(Paths.get("./data/"), file)) {
             return false;
         }
         if (!Files.isWritable(file)) {
@@ -57,7 +58,7 @@ public final class VaultDatabase implements Database {
     }
 
     public boolean restoreFrom(Path file) {
-        if (Utility.isFileInDirectory(Paths.get("./data/"), file)) {
+        if (PathUtility.isFileInDirectory(Paths.get("./data/"), file)) {
             return false;
         }
         if (!Files.isReadable(file)) {
@@ -69,7 +70,7 @@ public final class VaultDatabase implements Database {
     }
 
     public boolean mergeFrom(Path file) {
-        if (Utility.isFileInDirectory(Paths.get("./data/"), file)) {
+        if (PathUtility.isFileInDirectory(Paths.get("./data/"), file)) {
             return false;
         }
         if (!Files.isReadable(file)) {
@@ -84,22 +85,21 @@ public final class VaultDatabase implements Database {
         if (name == null) {
             return Optional.empty();
         }
-        Optional<String> hash = Utility.hash(password);
-        if (hash.isEmpty()) {
-            return Optional.empty();
-        }
         try (ResultSet resultSet = database.executeQuery(
-                "SELECT v.name, v.salt FROM vaults AS v WHERE v.name = ? AND v.password = ?;",
-                name,
-                hash.get()
+                "SELECT v.name, v.password, v.salt FROM vaults AS v WHERE v.name = ?;",
+                name
         )) {
             if (resultSet == null || !resultSet.next()) {
+                return Optional.empty();
+            }
+            if (!HashingUtility.verifyPassword(password, resultSet.getString("password"))) {
                 return Optional.empty();
             }
             return Optional.of(new Vault(
                     resultSet.getString("name"),
                     password,
-                    resultSet.getString("salt")
+                    resultSet.getString("salt"),
+                    resultSet.getString("password")
             ));
         } catch (SQLException | NoSuchAlgorithmException | DerivationException | HashingException e) {
             LOGGER.severe("Error retrieving vault: " + e.getMessage());
@@ -135,17 +135,15 @@ public final class VaultDatabase implements Database {
     }
 
     public boolean removeVault(String name, String password) {
-        if (name == null) {
+        if (name == null || password == null || name.isBlank() || password.isBlank()) {
             return false;
         }
-        Optional<String> hash = Utility.hash(password);
-        if (hash.isEmpty()) {
+        if (getVault(name, password).isEmpty()) {
             return false;
         }
         return database.executeUpdate(
-                "DELETE FROM vaults WHERE name = ? AND password = ?;",
-                name,
-                hash.get()
+                "DELETE FROM vaults WHERE name = ?;",
+                name
         ) == 1;
     }
 

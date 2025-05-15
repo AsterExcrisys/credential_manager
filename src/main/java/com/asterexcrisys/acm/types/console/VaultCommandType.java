@@ -48,13 +48,6 @@ public enum VaultCommandType implements CommandType {
             2,
             new Class[]{String.class, String.class},
             new Validator[]{new GenericValidator(), new PasswordValidator()}
-    ),
-    TEST_GIVEN(
-            "-tgv",
-            "testGivenPassword",
-            1,
-            new Class[]{String.class},
-            new Validator[]{new PasswordValidator()}
     );
 
     private final String shortName;

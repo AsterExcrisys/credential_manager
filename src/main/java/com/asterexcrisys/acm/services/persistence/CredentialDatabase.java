@@ -1,10 +1,10 @@
 package com.asterexcrisys.acm.services.persistence;
 
-import com.asterexcrisys.acm.constants.Persistence;
+import com.asterexcrisys.acm.constants.PersistenceConstants;
 import com.asterexcrisys.acm.exceptions.EncryptionException;
-import com.asterexcrisys.acm.services.Utility;
 import com.asterexcrisys.acm.services.encryption.KeyEncryptor;
 import com.asterexcrisys.acm.types.encryption.Credential;
+import com.asterexcrisys.acm.utility.PathUtility;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -21,7 +21,7 @@ public final class CredentialDatabase implements Database {
     private final CoreDatabase database;
 
     public CredentialDatabase(String vaultName, String masterKey) throws NullPointerException {
-        database = new CoreDatabase(vaultName, Persistence.CREDENTIAL_DATABASE, masterKey);
+        database = new CoreDatabase(vaultName, PersistenceConstants.CREDENTIAL_DATABASE, masterKey);
     }
 
     public boolean connect() {
@@ -43,7 +43,7 @@ public final class CredentialDatabase implements Database {
     }
 
     public boolean backupTo(Path file) {
-        if (Utility.isFileInDirectory(Paths.get("./data/"), file)) {
+        if (PathUtility.isFileInDirectory(Paths.get("./data/"), file)) {
             return false;
         }
         if (!Files.isWritable(file)) {
@@ -55,7 +55,7 @@ public final class CredentialDatabase implements Database {
     }
 
     public boolean restoreFrom(Path file) {
-        if (Utility.isFileInDirectory(Paths.get("./data/"), file)) {
+        if (PathUtility.isFileInDirectory(Paths.get("./data/"), file)) {
             return false;
         }
         if (!Files.isReadable(file)) {
@@ -67,7 +67,7 @@ public final class CredentialDatabase implements Database {
     }
 
     public boolean mergeFrom(Path file) {
-        if (Utility.isFileInDirectory(Paths.get("./data/"), file)) {
+        if (PathUtility.isFileInDirectory(Paths.get("./data/"), file)) {
             return false;
         }
         if (!Files.isReadable(file)) {

@@ -4,12 +4,13 @@ import com.asterexcrisys.acm.exceptions.DatabaseException;
 import com.asterexcrisys.acm.exceptions.DerivationException;
 import com.asterexcrisys.acm.exceptions.HashingException;
 import com.asterexcrisys.acm.services.authentication.Authentication;
-import com.asterexcrisys.acm.services.Utility;
+import com.asterexcrisys.acm.utility.EncryptionUtility;
 import com.asterexcrisys.acm.services.persistence.VaultDatabase;
 import com.asterexcrisys.acm.services.utility.PasswordTester;
 import com.asterexcrisys.acm.types.encryption.Vault;
 import com.asterexcrisys.acm.types.utility.Pair;
 import com.asterexcrisys.acm.types.utility.PasswordStrength;
+import com.asterexcrisys.acm.utility.PathUtility;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -27,7 +28,7 @@ public class VaultManager implements AutoCloseable {
     private CredentialManager manager;
 
     public VaultManager(String masterKey, String sealedSalt) throws NullPointerException, DerivationException, DatabaseException {
-        database = new VaultDatabase(Utility.derive(
+        database = new VaultDatabase(EncryptionUtility.deriveKey(
                 masterKey,
                 Base64.getDecoder().decode(sealedSalt)
         ).orElseThrow(DerivationException::new));
@@ -58,7 +59,12 @@ public class VaultManager implements AutoCloseable {
             if (vault.isEmpty()) {
                 return false;
             }
-            manager = new CredentialManager(name, password, vault.get().getEncryptor().getSealedSalt());
+            manager = new CredentialManager(
+                    name,
+                    password,
+                    vault.get().getEncryptor().getSealedSalt(),
+                    vault.get().getHashedPassword()
+            );
             return true;
         } catch (NoSuchAlgorithmException | DerivationException | HashingException | DatabaseException e) {
             LOGGER.severe("Error authenticating user to vault: " + e.getMessage());
@@ -99,13 +105,13 @@ public class VaultManager implements AutoCloseable {
         if (!database.removeVault(name, password)) {
             return false;
         }
-        Utility.deleteRecursively(Paths.get(String.format("./data/%s/", name)));
+        PathUtility.deleteRecursively(Paths.get(String.format("./data/%s/", name)));
         return true;
     }
 
     public Pair<PasswordStrength, String[]> testGivenPassword(String password) {
         PasswordTester passwordTester = new PasswordTester(password);
-        return new Pair<>(passwordTester.getStrengthGrade(), passwordTester.getSafetyAdvices());
+        return Pair.of(passwordTester.getStrengthGrade(), passwordTester.getSafetyAdvices());
     }
 
     public void close() {

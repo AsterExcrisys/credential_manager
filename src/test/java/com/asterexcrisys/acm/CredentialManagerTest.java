@@ -30,7 +30,7 @@ public class CredentialManagerTest {
 
     @BeforeEach
     public void setUp() throws DerivationException, DatabaseException, NoSuchAlgorithmException, HashingException {
-        manager = new CredentialManager("name", "password", vault.getEncryptor().getSealedSalt());
+        manager = new CredentialManager("name", "password", vault.getEncryptor().getSealedSalt(), vault.getHashedPassword());
     }
 
     @AfterEach

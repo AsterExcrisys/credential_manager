@@ -2,7 +2,7 @@ package com.asterexcrisys.acm;
 
 import com.asterexcrisys.acm.exceptions.DatabaseException;
 import com.asterexcrisys.acm.exceptions.DerivationException;
-import com.asterexcrisys.acm.services.Utility;
+import com.asterexcrisys.acm.utility.HashingUtility;
 import com.asterexcrisys.acm.types.encryption.Vault;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,7 +31,7 @@ public class VaultManagerTest {
     public void shouldAddVaultToDatabase() {
         manager.addVault("name1", "password");
         Optional<Vault> vault = manager.getVault("name", "password");
-        Optional<String> password = Utility.hash("password");
+        Optional<String> password = HashingUtility.hashPassword("password");
         assertTrue(vault.isPresent());
         assertTrue(password.isPresent());
         assertEquals(password.get(), vault.get().getHashedPassword());

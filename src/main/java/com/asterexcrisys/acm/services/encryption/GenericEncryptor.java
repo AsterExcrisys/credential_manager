@@ -1,6 +1,6 @@
 package com.asterexcrisys.acm.services.encryption;
 
-import com.asterexcrisys.acm.constants.Encryption;
+import com.asterexcrisys.acm.constants.EncryptionConstants;
 import com.asterexcrisys.acm.exceptions.EncryptionException;
 import javax.crypto.*;
 import javax.crypto.spec.SecretKeySpec;
@@ -8,18 +8,20 @@ import java.security.*;
 import java.util.Base64;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.logging.Logger;
 
 @SuppressWarnings("unused")
 public final class GenericEncryptor implements Encryptor {
 
+    private static final Logger LOGGER = Logger.getLogger(GenericEncryptor.class.getName());
     private final CoreEncryptor encryptor;
 
     public GenericEncryptor() throws NullPointerException, EncryptionException {
         encryptor = new CoreEncryptor(generateKey().orElseThrow(EncryptionException::new));
     }
 
-    public GenericEncryptor(String sealedKey) throws NullPointerException {
-        encryptor = new CoreEncryptor(generateKey(Objects.requireNonNull(sealedKey)));
+    public GenericEncryptor(String sealedKey) throws NullPointerException, EncryptionException {
+        encryptor = new CoreEncryptor(generateKey(Objects.requireNonNull(sealedKey)).orElseThrow(EncryptionException::new));
     }
 
     public Optional<String> getEncryptedKey(KeyEncryptor encryptor) {
@@ -42,19 +44,23 @@ public final class GenericEncryptor implements Encryptor {
         return encryptor.decrypt(data);
     }
 
-    private Optional<SecretKey> generateKey() {
+    public static Optional<SecretKey> generateKey() {
         try {
-            KeyGenerator generator = KeyGenerator.getInstance(Encryption.GENERATOR_ALGORITHM);
-            generator.init(Encryption.KEY_SIZE);
+            KeyGenerator generator = KeyGenerator.getInstance(EncryptionConstants.KEY_GENERATION_ALGORITHM);
+            generator.init(EncryptionConstants.KEY_SIZE);
             return Optional.ofNullable(generator.generateKey());
         } catch (NoSuchAlgorithmException | InvalidParameterException e) {
+            LOGGER.severe("Error generating key: " + e.getMessage());
             return Optional.empty();
         }
     }
 
-    private static SecretKey generateKey(String sealedKey) {
+    public static Optional<SecretKey> generateKey(String sealedKey) {
+        if (sealedKey == null || sealedKey.isBlank()) {
+            return Optional.empty();
+        }
         byte[] decodedKey = Base64.getDecoder().decode(sealedKey);
-        return new SecretKeySpec(decodedKey, 0, decodedKey.length, Encryption.GENERATOR_ALGORITHM);
+        return Optional.of(new SecretKeySpec(decodedKey, EncryptionConstants.KEY_GENERATION_ALGORITHM));
     }
 
 }

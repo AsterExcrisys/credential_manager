@@ -1,14 +1,14 @@
 package com.asterexcrisys.acm.types.console;
 
-import com.asterexcrisys.acm.services.Utility;
+import com.asterexcrisys.acm.utility.ConsoleUtility;
 import java.util.Optional;
 import java.util.function.Function;
 
 @SuppressWarnings("unused")
 public enum ShellType {
 
-    NON_INTERACTIVE(Utility.NonInteractiveShell::fromValue),
-    INTERACTIVE(Utility.InteractiveShell::fromValue),;
+    NON_INTERACTIVE(ConsoleUtility.NonInteractiveShell::fromCommandName),
+    INTERACTIVE(ConsoleUtility.InteractiveShell::fromCommandName),;
 
     private final Function<String, Optional<? extends CommandType>> filter;
 

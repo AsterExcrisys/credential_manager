@@ -1,7 +1,7 @@
 import com.asterexcrisys.acm.CredentialManager;
 import com.asterexcrisys.acm.VaultManager;
-import com.asterexcrisys.acm.constants.Global;
-import com.asterexcrisys.acm.services.Utility;
+import com.asterexcrisys.acm.constants.GlobalConstants;
+import com.asterexcrisys.acm.utility.GlobalUtility;
 import com.asterexcrisys.acm.services.console.handlers.ShellSignalHandler;
 import com.asterexcrisys.acm.services.console.parsers.ShellArgumentParser;
 import com.asterexcrisys.acm.types.console.*;
@@ -27,10 +27,7 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
-import java.util.logging.ConsoleHandler;
-import java.util.logging.FileHandler;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.util.logging.*;
 import static org.jline.keymap.KeyMap.alt;
 import static org.jline.keymap.KeyMap.ctrl;
 
@@ -46,7 +43,7 @@ public class ShellApplication {
         LineReader reader;
         try {
             Files.createDirectories(Paths.get("./data/"));
-            configureLogger(Logger.getGlobal());
+            configureLogger(LogManager.getLogManager().getLogger(GlobalConstants.ROOT_LOGGER));
             reader = configureReader();
             if (validateArguments(programArguments, ShellType.NON_INTERACTIVE)) {
                 return;
@@ -56,16 +53,19 @@ public class ShellApplication {
             System.exit(1);
             return;
         }
-        try (VaultManager manager = new VaultManager("test", "test")) {
+        try (VaultManager manager = new VaultManager("test", "YWFhYWJiYmJjY2NjZGRkZA==")) {
+            if (checkGenericNonInteractiveCommands(manager, programArguments)) {
+                return;
+            }
             if (checkVaultCommands(manager, programArguments)) {
                 return;
             }
             while (true) {
-                String[] commandArguments = reader.readLine(Global.SHELL_PROMPT).trim().split("\\s+");
+                String[] commandArguments = reader.readLine(GlobalConstants.SHELL_PROMPT).trim().split("\\s+");
                 if (validateArguments(commandArguments, ShellType.INTERACTIVE)) {
                     continue;
                 }
-                if (checkGenericCommands(manager, commandArguments)) {
+                if (checkGenericInteractiveCommands(manager, commandArguments)) {
                     return;
                 }
                 if (checkCredentialCommands(manager, commandArguments)) {
@@ -79,22 +79,27 @@ public class ShellApplication {
     }
 
     private static void configureLogger(Logger logger) throws IOException {
+        for (Handler handler : logger.getHandlers()) {
+            logger.removeHandler(handler);
+        }
         Files.createDirectories(Paths.get("./data/logs/"));
         ConsoleHandler consoleHandler = new ConsoleHandler();
+        consoleHandler.setFormatter(new SimpleFormatter());
         consoleHandler.setLevel(Level.ALL);
         logger.addHandler(consoleHandler);
         FileHandler fileHandler = new FileHandler(
-                String.format("./data/logs/%s.log", Utility.getCurrentDate()),
+                String.format("./data/logs/%s.log", GlobalUtility.getCurrentDate()),
                 true
         );
         fileHandler.setLevel(Level.ALL);
+        fileHandler.setFormatter(new SimpleFormatter());
         logger.addHandler(fileHandler);
     }
 
     private static LineReader configureReader() throws IOException {
         Files.createDirectories(Paths.get("./data/console/"));
         LineReaderBuilder builder = LineReaderBuilder.builder();
-        builder.appName(String.format("%s (%s)", Global.APPLICATION_NAME, Global.APPLICATION_VERSION));
+        builder.appName(String.format("%s (%s)", GlobalConstants.APPLICATION_NAME, GlobalConstants.APPLICATION_VERSION));
         builder.terminal(configureTerminal());
         builder.parser(new DefaultParser());
         builder.completer(new StringsCompleter(Arrays.stream(CredentialCommandType.values()).map(CredentialCommandType::longName).toArray(String[]::new)));
@@ -112,8 +117,8 @@ public class ShellApplication {
         LineReader reader = builder.build();
         KeyMap<Binding> bindings = reader.getKeyMaps().get(LineReader.MAIN);
         bindings.bind(new Reference(LineReader.CAPITALIZE_WORD), alt('C'));
-        bindings.bind(new Reference(Global.UPCASE_BINDING), alt('U'));
-        bindings.bind(new Reference(Global.DOWNCASE_BINDING), alt('L'));
+        bindings.bind(new Reference(GlobalConstants.UPCASE_BINDING), alt('U'));
+        bindings.bind(new Reference(GlobalConstants.DOWNCASE_BINDING), alt('L'));
         bindings.bind(new Reference(LineReader.TRANSPOSE_CHARS), ctrl('T'));
         bindings.bind(new Reference(LineReader.KILL_LINE), ctrl('K'));
         bindings.bind(new Reference(LineReader.HISTORY_INCREMENTAL_SEARCH_BACKWARD), ctrl('R'));
@@ -123,8 +128,8 @@ public class ShellApplication {
     private static Terminal configureTerminal() throws IOException {
         TerminalBuilder builder = TerminalBuilder.builder();
         builder.system(true);
-        builder.name(String.format("%s (%s)", Global.APPLICATION_NAME, Global.APPLICATION_VERSION));
-        builder.type(Global.TERMINAL_TYPE);
+        builder.name(String.format("%s (%s)", GlobalConstants.APPLICATION_NAME, GlobalConstants.APPLICATION_VERSION));
+        builder.type(GlobalConstants.TERMINAL_TYPE);
         builder.streams(System.in, System.out);
         builder.encoding(StandardCharsets.UTF_8);
         builder.nativeSignals(true);
@@ -147,13 +152,21 @@ public class ShellApplication {
         return true;
     }
 
+    private static boolean checkGenericNonInteractiveCommands(VaultManager manager, String[] arguments) {
+        if (GenericNonInteractiveCommandType.TEST_GIVEN.is(arguments[0])) {
+            System.out.println("Advices: " + manager.testGivenPassword(arguments[1]));
+            return true;
+        }
+        return false;
+    }
+
     private static boolean checkVaultCommands(VaultManager manager, String[] arguments) {
         if (VaultCommandType.GET.is(arguments[0])) {
             if (!manager.authenticate(arguments[1], arguments[2])) {
                 System.out.println("Authentication failed to vault with name: " + arguments[1]);
                 return true;
             }
-            System.out.println("Authenticated succeeded to vault with name: " + arguments[1]);
+            System.out.println("Authentication succeeded to vault with name: " + arguments[1]);
             return false;
         }
         if (VaultCommandType.GET_ALL.is(arguments[0])) {
@@ -161,13 +174,19 @@ public class ShellApplication {
             return true;
         }
         if (VaultCommandType.ADD.is(arguments[0])) {
-            manager.addVault(arguments[1], arguments[2]);
-            System.out.println("Added vault: " + arguments[1]);
+            if (!manager.addVault(arguments[1], arguments[2])) {
+                System.out.println("Failed to add vault with name: " + arguments[1]);
+                return true;
+            }
+            System.out.println("Succeeded to add vault with name: " + arguments[1]);
             return true;
         }
         if (VaultCommandType.REMOVE.is(arguments[0])) {
-            manager.removeVault(arguments[1], arguments[2]);
-            System.out.println("Removed vault: " + arguments[1]);
+            if (!manager.removeVault(arguments[1], arguments[2])) {
+                System.out.println("Failed to remove vault with name: " + arguments[1]);
+                return true;
+            }
+            System.out.println("Succeeded to remove vault with name: " + arguments[1]);
             return true;
         }
         if (VaultCommandType.IMPORT.is(arguments[0])) {
@@ -178,30 +197,26 @@ public class ShellApplication {
             // TODO: to be implemented
             return true;
         }
-        if (VaultCommandType.TEST_GIVEN.is(arguments[0])) {
-            System.out.println("Advices: " + manager.testGivenPassword(arguments[1]));
-            return false;
-        }
         System.out.println("No command found with name: " + arguments[0]);
         return true;
     }
 
-    private static boolean checkGenericCommands(VaultManager vaultManager, String[] arguments) {
+    private static boolean checkGenericInteractiveCommands(VaultManager vaultManager, String[] arguments) {
         Optional<CredentialManager> credentialManager = vaultManager.getManager();
         if (credentialManager.isEmpty()) {
             System.out.println("No current authenticated vault was found");
             return true;
         }
-        if (GenericCommandType.CURRENT_VAULT.is(arguments[0])) {
+        if (GenericInteractiveCommandType.CURRENT_VAULT.is(arguments[0])) {
             System.out.println("Current vault: " + credentialManager.get().getVault().getName());
             return false;
         }
-        if (GenericCommandType.GENERATE_PASSWORD.is(arguments[0])) {
+        if (GenericInteractiveCommandType.GENERATE_PASSWORD.is(arguments[0])) {
             int length = Integer.parseInt(arguments[1]);
             System.out.println("Generated password: " + credentialManager.get().generatePassword(length));
             return false;
         }
-        if (GenericCommandType.TEST_EXISTING.is(arguments[0])) {
+        if (GenericInteractiveCommandType.TEST_EXISTING.is(arguments[0])) {
             Optional<Pair<PasswordStrength, String[]>> advices = credentialManager.get().testExistingPassword(arguments[1]);
             if (advices.isPresent()) {
                 System.out.println("Advices: " + advices.get());
@@ -210,7 +225,7 @@ public class ShellApplication {
             }
             return false;
         }
-        if (GenericCommandType.QUIT.is(arguments[0]) || GenericCommandType.EXIT.is(arguments[0])) {
+        if (GenericInteractiveCommandType.QUIT.is(arguments[0]) || GenericInteractiveCommandType.EXIT.is(arguments[0])) {
             System.out.println("Closing the shell...");
             return true;
         }

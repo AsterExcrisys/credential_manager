@@ -4,7 +4,7 @@ import com.asterexcrisys.acm.exceptions.DatabaseException;
 import com.asterexcrisys.acm.exceptions.DerivationException;
 import com.asterexcrisys.acm.exceptions.EncryptionException;
 import com.asterexcrisys.acm.exceptions.HashingException;
-import com.asterexcrisys.acm.services.Utility;
+import com.asterexcrisys.acm.utility.EncryptionUtility;
 import com.asterexcrisys.acm.services.persistence.CredentialDatabase;
 import com.asterexcrisys.acm.services.utility.PasswordGenerator;
 import com.asterexcrisys.acm.services.utility.PasswordTester;
@@ -24,11 +24,11 @@ public class CredentialManager implements AutoCloseable {
     private final CredentialDatabase database;
     private final PasswordGenerator generator;
 
-    public CredentialManager(String name, String password, String sealedSalt) throws NullPointerException, DerivationException, NoSuchAlgorithmException, HashingException, DatabaseException {
-        vault = new Vault(name, password, sealedSalt);
+    public CredentialManager(String name, String password, String sealedSalt, String hashedPassword) throws NullPointerException, DerivationException, NoSuchAlgorithmException, HashingException, DatabaseException {
+        vault = new Vault(name, password, sealedSalt, hashedPassword);
         database = new CredentialDatabase(
                 Objects.requireNonNull(name),
-                Utility.derive(
+                EncryptionUtility.deriveKey(
                         Objects.requireNonNull(password),
                         Base64.getDecoder().decode(Objects.requireNonNull(sealedSalt))
                 ).orElseThrow(DerivationException::new)
@@ -111,7 +111,7 @@ public class CredentialManager implements AutoCloseable {
             return Optional.empty();
         }
         PasswordTester passwordTester = new PasswordTester(password.get());
-        return Optional.of(new Pair<>(passwordTester.getStrengthGrade(), passwordTester.getSafetyAdvices()));
+        return Optional.of(Pair.of(passwordTester.getStrengthGrade(), passwordTester.getSafetyAdvices()));
     }
 
     public void close() {
