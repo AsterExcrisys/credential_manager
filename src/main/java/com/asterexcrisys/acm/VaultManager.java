@@ -4,6 +4,7 @@ import com.asterexcrisys.acm.exceptions.DatabaseException;
 import com.asterexcrisys.acm.exceptions.DerivationException;
 import com.asterexcrisys.acm.exceptions.HashingException;
 import com.asterexcrisys.acm.services.authentication.Authentication;
+import com.asterexcrisys.acm.utility.DatabaseUtility;
 import com.asterexcrisys.acm.utility.EncryptionUtility;
 import com.asterexcrisys.acm.services.persistence.VaultDatabase;
 import com.asterexcrisys.acm.services.utility.PasswordTester;
@@ -126,17 +127,21 @@ public class VaultManager implements AutoCloseable {
         return true;
     }
 
-    public boolean importVault(Path file, String name, String password, boolean shouldMerge) {
+    public boolean importVault(Path file, String name, String password) {
         if (manager != null) {
             return false;
         }
-        if (!addVault(name, password)) {
+        Optional<byte[]> salt = DatabaseUtility.deconstructImport(file);
+        if (salt.isEmpty()) {
+            return false;
+        }
+        if (!addVault(name, password, Base64.getEncoder().encodeToString(salt.get()))) {
             return false;
         }
         if (!authenticate(name, password)) {
             return false;
         }
-        return manager.importVault(file, password, shouldMerge);
+        return manager.importVault(file, password, salt.get());
     }
 
     public boolean exportVault(Path file, String name, String password) {

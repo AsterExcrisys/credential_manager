@@ -63,7 +63,7 @@ public final class CredentialDatabase implements Database {
         return DatabaseUtility.restoreFrom(databaseFile.get(), backupFile);
     }
 
-    public boolean mergeFrom(Path file, String masterKey) {
+    public boolean mergeWith(Path file, String masterKey) {
         if (PathUtility.isFileInDirectory(Paths.get("./data/"), file)) {
             return false;
         }

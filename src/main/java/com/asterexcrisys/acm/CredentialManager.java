@@ -96,21 +96,12 @@ public class CredentialManager implements AutoCloseable {
     }
 
     // TODO: might need to be fixed
-    public boolean importVault(Path file, String password, boolean shouldMerge) {
-        Optional<byte[]> salt = DatabaseUtility.deconstructImport(file);
-        if (salt.isEmpty()) {
-            return false;
-        }
-        Optional<String> masterKey = EncryptionUtility.deriveKey(password, salt.get());
+    public boolean importVault(Path file, String password, byte[] salt) {
+        Optional<String> masterKey = EncryptionUtility.deriveKey(password, salt);
         if (masterKey.isEmpty()) {
             return false;
         }
-        if (shouldMerge) {
-            database.mergeFrom(file, masterKey.get());
-        } else {
-            database.restoreFrom(file);
-        }
-        return true;
+        return database.mergeWith(file, masterKey.get());
     }
 
     // TODO: might need to be fixed
