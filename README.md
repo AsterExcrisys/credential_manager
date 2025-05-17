@@ -1,3 +1,3 @@
 # CredentialManager
 
-This project aims to build a credential managers capable of doing everything locally, without the need for a remove server or database. It currently offers only a command-line interface (CLI), which **may be** replaced/accompanied by a graphic user interface (GUI) in the future, and stores all credentials locally and securely by using encrypted SQLite databases. 
+This project aims to build a credential managers capable of doing everything locally, without the need for a remove server or database. It currently offers only a command-line interface (CLI), which **may be** replaced/accompanied by a graphic user interface (GUI) in the future, and stores all credentials locally and securely by using encrypted SQLite databases. Although the 'local-only' premise, this tool does actually support portability, but it is limited to its import and export features (you can import and export the encrypted vaults containing your credentials).
