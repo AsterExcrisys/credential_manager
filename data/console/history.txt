@@ -1,2 +1,8 @@
 1747346570913:addCredential platform username password
 1747346587743:getCredential platform
+1747417370537:addCredential platform1 username password
+1747417381492:getAllCredentials
+1747417407034:removeCredential platform1
+1747417421313:getAllCredentials
+1747417433234:importVault
+1747417443100:exitShell

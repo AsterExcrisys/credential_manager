@@ -4,6 +4,7 @@ import com.asterexcrisys.acm.exceptions.DatabaseException;
 import com.asterexcrisys.acm.exceptions.DerivationException;
 import com.asterexcrisys.acm.exceptions.EncryptionException;
 import com.asterexcrisys.acm.exceptions.HashingException;
+import com.asterexcrisys.acm.utility.DatabaseUtility;
 import com.asterexcrisys.acm.utility.EncryptionUtility;
 import com.asterexcrisys.acm.services.persistence.CredentialDatabase;
 import com.asterexcrisys.acm.services.utility.PasswordGenerator;
@@ -12,6 +13,7 @@ import com.asterexcrisys.acm.types.encryption.Vault;
 import com.asterexcrisys.acm.types.utility.Pair;
 import com.asterexcrisys.acm.types.encryption.Credential;
 import com.asterexcrisys.acm.types.utility.PasswordStrength;
+import java.nio.file.Path;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.logging.Logger;
@@ -25,7 +27,7 @@ public class CredentialManager implements AutoCloseable {
     private final PasswordGenerator generator;
 
     public CredentialManager(String name, String password, String sealedSalt, String hashedPassword) throws NullPointerException, DerivationException, NoSuchAlgorithmException, HashingException, DatabaseException {
-        vault = new Vault(name, password, sealedSalt, hashedPassword);
+        vault = new Vault(sealedSalt, hashedPassword, name, password);
         database = new CredentialDatabase(
                 Objects.requireNonNull(name),
                 EncryptionUtility.deriveKey(
@@ -91,6 +93,35 @@ public class CredentialManager implements AutoCloseable {
 
     public boolean removeAllCredentials() {
         return database.removeAllCredentials();
+    }
+
+    // TODO: might need to be fixed
+    public boolean importVault(Path file, String password, boolean shouldMerge) {
+        Optional<byte[]> salt = DatabaseUtility.deconstructImport(file);
+        if (salt.isEmpty()) {
+            return false;
+        }
+        Optional<String> masterKey = EncryptionUtility.deriveKey(password, salt.get());
+        if (masterKey.isEmpty()) {
+            return false;
+        }
+        if (shouldMerge) {
+            database.mergeFrom(file, masterKey.get());
+        } else {
+            database.restoreFrom(file);
+        }
+        return true;
+    }
+
+    // TODO: might need to be fixed
+    public boolean exportVault(Path file) {
+        if (!database.backupTo(file)) {
+            return false;
+        }
+        return DatabaseUtility.constructExport(
+                file,
+                Base64.getDecoder().decode(vault.getEncryptor().getSealedSalt())
+        );
     }
 
     public String generatePassword() {

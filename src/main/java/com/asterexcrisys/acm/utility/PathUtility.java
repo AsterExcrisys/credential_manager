@@ -13,6 +13,9 @@ public final class PathUtility {
     }
 
     public static boolean deleteRecursively(Path path) {
+        if (path == null) {
+            return false;
+        }
         if (Files.exists(path) && Files.isDirectory(path)) {
             for (File file : Objects.requireNonNull(path.toFile().listFiles())) {
                 if (!deleteRecursively(file.toPath())) {
@@ -28,6 +31,9 @@ public final class PathUtility {
     }
 
     public static boolean isFileInDirectory(Path directory, Path file) {
+        if (directory == null || file == null) {
+            return false;
+        }
         if (!Files.exists(directory) || !Files.isDirectory(directory)) {
             return false;
         }

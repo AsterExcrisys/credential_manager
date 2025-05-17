@@ -4,6 +4,7 @@ import com.asterexcrisys.acm.constants.PersistenceConstants;
 import com.asterexcrisys.acm.exceptions.EncryptionException;
 import com.asterexcrisys.acm.services.encryption.KeyEncryptor;
 import com.asterexcrisys.acm.types.encryption.Credential;
+import com.asterexcrisys.acm.utility.DatabaseUtility;
 import com.asterexcrisys.acm.utility.PathUtility;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -24,6 +25,10 @@ public final class CredentialDatabase implements Database {
         database = new CoreDatabase(vaultName, PersistenceConstants.CREDENTIAL_DATABASE, masterKey);
     }
 
+    public Optional<Path> getDatabasePath() {
+        return database.getDatabasePath();
+    }
+
     public boolean connect() {
         return database.connect();
     }
@@ -42,38 +47,33 @@ public final class CredentialDatabase implements Database {
         return database.executeUpdate("DROP TABLE IF EXISTS credentials;") == 0;
     }
 
-    public boolean backupTo(Path file) {
-        if (PathUtility.isFileInDirectory(Paths.get("./data/"), file)) {
+    public boolean backupTo(Path backupFile) {
+        Optional<Path> databaseFile = database.getDatabasePath();
+        if (databaseFile.isEmpty()) {
             return false;
         }
-        if (!Files.isWritable(file)) {
-            return false;
-        }
-        return database.executeUpdate("ATTACH ? AS file;", file.toAbsolutePath().toString()) == 0
-                && database.executeUpdate("BACKUP TO file;") == 0
-                && database.executeUpdate("DETACH file;") == 0;
+        return DatabaseUtility.backupTo(databaseFile.get(), backupFile);
     }
 
-    public boolean restoreFrom(Path file) {
+    public boolean restoreFrom(Path backupFile) {
+        Optional<Path> databaseFile = database.getDatabasePath();
+        if (databaseFile.isEmpty()) {
+            return false;
+        }
+        return DatabaseUtility.restoreFrom(databaseFile.get(), backupFile);
+    }
+
+    public boolean mergeFrom(Path file, String masterKey) {
         if (PathUtility.isFileInDirectory(Paths.get("./data/"), file)) {
             return false;
         }
         if (!Files.isReadable(file)) {
             return false;
         }
-        return database.executeUpdate("ATTACH ? AS file;", file.toAbsolutePath().toString()) == 0
-                && database.executeUpdate("RESTORE FROM file;") == 0
-                && database.executeUpdate("DETACH file;") == 0;
-    }
-
-    public boolean mergeFrom(Path file) {
-        if (PathUtility.isFileInDirectory(Paths.get("./data/"), file)) {
+        if (masterKey == null || masterKey.isBlank()) {
             return false;
         }
-        if (!Files.isReadable(file)) {
-            return false;
-        }
-        return database.executeUpdate("ATTACH ? AS file;", file.toAbsolutePath().toString()) == 0
+        return database.executeUpdate("ATTACH ? AS file KEY ?;", file.toAbsolutePath().toString(), masterKey) == 0
                 && database.executeUpdate("INSERT OR REPLACE INTO credentials (platform, username, password, key) VALUES (SELECT c.platform, c.username, c.password, c.key FROM file.credentials AS c);") == 0
                 && database.executeUpdate("DETACH file;") == 0;
     }

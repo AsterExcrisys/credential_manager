@@ -2,7 +2,6 @@ package com.asterexcrisys.acm.types.console;
 
 import com.asterexcrisys.acm.services.console.validators.GenericValidator;
 import com.asterexcrisys.acm.services.console.validators.PasswordValidator;
-import com.asterexcrisys.acm.services.console.validators.PathValidator;
 import com.asterexcrisys.acm.services.console.validators.Validator;
 import java.util.Optional;
 
@@ -31,20 +30,6 @@ public enum VaultCommandType implements CommandType {
     REMOVE(
             "-rv",
             "removeVault",
-            2,
-            new Class[]{String.class, String.class},
-            new Validator[]{new GenericValidator(), new PasswordValidator()}
-    ),
-    IMPORT(
-            "-iv",
-            "importVault",
-            2,
-            new Class[]{String.class, String.class},
-            new Validator[]{new PathValidator(), new PasswordValidator()}
-    ),
-    EXPORT(
-            "-ev",
-            "exportVault",
             2,
             new Class[]{String.class, String.class},
             new Validator[]{new GenericValidator(), new PasswordValidator()}

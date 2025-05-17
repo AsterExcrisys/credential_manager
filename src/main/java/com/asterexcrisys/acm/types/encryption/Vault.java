@@ -20,7 +20,13 @@ public class Vault {
         this.password = HashingUtility.hashPassword(Objects.requireNonNull(password)).orElseThrow(HashingException::new);
     }
 
-    public Vault(String name, String password, String sealedSalt, String hashedPassword) throws DerivationException, HashingException, NoSuchAlgorithmException {
+    public Vault(String sealedSalt, String name, String password) throws DerivationException, HashingException, NoSuchAlgorithmException {
+        encryptor = new KeyEncryptor(password, sealedSalt);
+        this.name = Objects.requireNonNull(name);
+        this.password = HashingUtility.hashPassword(Objects.requireNonNull(password)).orElseThrow(HashingException::new);
+    }
+
+    public Vault(String sealedSalt, String hashedPassword, String name, String password) throws DerivationException, HashingException, NoSuchAlgorithmException {
         encryptor = new KeyEncryptor(password, sealedSalt);
         this.name = Objects.requireNonNull(name);
         this.password = Objects.requireNonNull(hashedPassword);

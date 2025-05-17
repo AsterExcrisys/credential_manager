@@ -41,7 +41,7 @@ public final class HashingUtility {
             Argon2BytesGenerator generator = new Argon2BytesGenerator();
             generator.init(parameters);
             generator.generateBytes(password.getBytes(StandardCharsets.UTF_8), hashedData, 0, hashedData.length);
-            Optional<byte[]> result = construct(
+            Optional<byte[]> result = constructHash(
                     salt,
                     parameters.getVersion(),
                     parameters.getIterations(),
@@ -62,7 +62,7 @@ public final class HashingUtility {
         if (password == null || hash == null || password.isBlank() || hash.isBlank()) {
             return false;
         }
-        Optional<Pair<Argon2Parameters, byte[]>> pair = deconstruct(Base64.getDecoder().decode(hash));
+        Optional<Pair<Argon2Parameters, byte[]>> pair = deconstructHash(Base64.getDecoder().decode(hash));
         if (pair.isEmpty()) {
             return false;
         }
@@ -73,7 +73,7 @@ public final class HashingUtility {
         return Arrays.areEqual(pair.get().second(), hashedData);
     }
 
-    private static Optional<byte[]> construct(byte[] salt, int version, int iterationCount, int memoryUsage, byte[] hashedData) {
+    private static Optional<byte[]> constructHash(byte[] salt, int version, int iterationCount, int memoryUsage, byte[] hashedData) {
         if (salt == null || salt.length != HashingConstants.SALT_SIZE) {
             return Optional.empty();
         }
@@ -92,7 +92,7 @@ public final class HashingUtility {
         return Optional.of(buffer.array());
     }
 
-    private static Optional<Pair<Argon2Parameters, byte[]>> deconstruct(byte[] hash) {
+    private static Optional<Pair<Argon2Parameters, byte[]>> deconstructHash(byte[] hash) {
         if (hash == null || hash.length != HashingConstants.SALT_SIZE + HashingConstants.HASH_SIZE + 12) {
             return Optional.empty();
         }

@@ -13,6 +13,7 @@ import com.asterexcrisys.acm.types.utility.PasswordStrength;
 import com.asterexcrisys.acm.utility.PathUtility;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
@@ -101,12 +102,51 @@ public class VaultManager implements AutoCloseable {
         }
     }
 
+    public boolean addVault(String sealedSalt, String name, String password) {
+        if (getVault(name, password).isPresent()) {
+            return false;
+        }
+        try {
+            if (!database.saveVault(new Vault(sealedSalt, name, password))) {
+                return false;
+            }
+            Files.createDirectories(Paths.get(String.format("./data/%s/", name)));
+            return true;
+        } catch (NoSuchAlgorithmException | IOException | HashingException | DerivationException e) {
+            LOGGER.severe("Error adding vault: " + e.getMessage());
+            return false;
+        }
+    }
+
     public boolean removeVault(String name, String password) {
         if (!database.removeVault(name, password)) {
             return false;
         }
         PathUtility.deleteRecursively(Paths.get(String.format("./data/%s/", name)));
         return true;
+    }
+
+    public boolean importVault(Path file, String name, String password, boolean shouldMerge) {
+        if (manager != null) {
+            return false;
+        }
+        if (!addVault(name, password)) {
+            return false;
+        }
+        if (!authenticate(name, password)) {
+            return false;
+        }
+        return manager.importVault(file, password, shouldMerge);
+    }
+
+    public boolean exportVault(Path file, String name, String password) {
+        if (manager != null) {
+            return false;
+        }
+        if (!authenticate(name, password)) {
+            return false;
+        }
+        return manager.exportVault(file);
     }
 
     public Pair<PasswordStrength, String[]> testGivenPassword(String password) {

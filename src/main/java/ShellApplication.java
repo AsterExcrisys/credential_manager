@@ -1,6 +1,8 @@
 import com.asterexcrisys.acm.CredentialManager;
 import com.asterexcrisys.acm.VaultManager;
 import com.asterexcrisys.acm.constants.GlobalConstants;
+import com.asterexcrisys.acm.constants.HashingConstants;
+import com.asterexcrisys.acm.utility.EncryptionUtility;
 import com.asterexcrisys.acm.utility.GlobalUtility;
 import com.asterexcrisys.acm.services.console.handlers.ShellSignalHandler;
 import com.asterexcrisys.acm.services.console.parsers.ShellArgumentParser;
@@ -20,11 +22,14 @@ import org.jline.reader.impl.completer.StringsCompleter;
 import org.jline.reader.impl.history.DefaultHistory;
 import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
+import oshi.SystemInfo;
+import oshi.hardware.ComputerSystem;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
 import java.util.logging.*;
@@ -53,7 +58,14 @@ public class ShellApplication {
             System.exit(1);
             return;
         }
-        try (VaultManager manager = new VaultManager("test", "YWFhYWJiYmJjY2NjZGRkZA==")) {
+        ComputerSystem computerSystem = (new SystemInfo()).getHardware().getComputerSystem();
+        try (VaultManager manager = new VaultManager(
+                computerSystem.getHardwareUUID(),
+                Base64.getEncoder().encodeToString(EncryptionUtility.checkPadding(
+                        computerSystem.getSerialNumber().getBytes(StandardCharsets.UTF_8),
+                        HashingConstants.SALT_SIZE
+                ))
+        )) {
             if (checkGenericNonInteractiveCommands(manager, programArguments)) {
                 return;
             }
@@ -153,6 +165,14 @@ public class ShellApplication {
     }
 
     private static boolean checkGenericNonInteractiveCommands(VaultManager manager, String[] arguments) {
+        if (GenericNonInteractiveCommandType.IMPORT.is(arguments[0])) {
+            // TODO: to be implemented
+            return true;
+        }
+        if (GenericNonInteractiveCommandType.EXPORT.is(arguments[0])) {
+            // TODO: to be implemented
+            return true;
+        }
         if (GenericNonInteractiveCommandType.TEST_GIVEN.is(arguments[0])) {
             System.out.println("Advices: " + manager.testGivenPassword(arguments[1]));
             return true;
@@ -187,14 +207,6 @@ public class ShellApplication {
                 return true;
             }
             System.out.println("Succeeded to remove vault with name: " + arguments[1]);
-            return true;
-        }
-        if (VaultCommandType.IMPORT.is(arguments[0])) {
-            // TODO: to be implemented
-            return true;
-        }
-        if (VaultCommandType.EXPORT.is(arguments[0])) {
-            // TODO: to be implemented
             return true;
         }
         System.out.println("No command found with name: " + arguments[0]);

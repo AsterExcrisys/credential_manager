@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.*;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.logging.Logger;
 
 @SuppressWarnings("unused")
@@ -27,6 +28,13 @@ public final class CoreDatabase implements Database {
         databasePath = Paths.get(String.format("./data/%s/%s.db", Objects.requireNonNull(directoryName), Objects.requireNonNull(fileName)));
         this.masterKey = Objects.requireNonNull(masterKey);
         connection = null;
+    }
+
+    public Optional<Path> getDatabasePath() {
+        if (!Files.exists(databasePath)) {
+            return Optional.empty();
+        }
+        return Optional.of(databasePath);
     }
 
     public boolean connect() {

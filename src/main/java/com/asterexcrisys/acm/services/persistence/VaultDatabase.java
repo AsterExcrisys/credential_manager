@@ -3,6 +3,7 @@ package com.asterexcrisys.acm.services.persistence;
 import com.asterexcrisys.acm.constants.PersistenceConstants;
 import com.asterexcrisys.acm.exceptions.DerivationException;
 import com.asterexcrisys.acm.exceptions.HashingException;
+import com.asterexcrisys.acm.utility.DatabaseUtility;
 import com.asterexcrisys.acm.utility.HashingUtility;
 import com.asterexcrisys.acm.types.encryption.Vault;
 import com.asterexcrisys.acm.utility.PathUtility;
@@ -27,6 +28,10 @@ public final class VaultDatabase implements Database {
         database = new CoreDatabase(PersistenceConstants.VAULT_DATABASE, masterKey);
     }
 
+    public Optional<Path> getDatabasePath() {
+        return database.getDatabasePath();
+    }
+
     public boolean connect() {
         return database.connect();
     }
@@ -45,38 +50,33 @@ public final class VaultDatabase implements Database {
         return database.executeUpdate("DROP TABLE IF EXISTS vaults;") == 0;
     }
 
-    public boolean backupTo(Path file) {
-        if (PathUtility.isFileInDirectory(Paths.get("./data/"), file)) {
+    public boolean backupTo(Path backupFile) {
+        Optional<Path> databaseFile = database.getDatabasePath();
+        if (databaseFile.isEmpty()) {
             return false;
         }
-        if (!Files.isWritable(file)) {
-            return false;
-        }
-        return database.executeUpdate("ATTACH ? AS file;", file.toAbsolutePath().toString()) == 0
-                && database.executeUpdate("BACKUP TO file;") == 0
-                && database.executeUpdate("DETACH file;") == 0;
+        return DatabaseUtility.backupTo(databaseFile.get(), backupFile);
     }
 
-    public boolean restoreFrom(Path file) {
+    public boolean restoreFrom(Path backupFile) {
+        Optional<Path> databaseFile = database.getDatabasePath();
+        if (databaseFile.isEmpty()) {
+            return false;
+        }
+        return DatabaseUtility.restoreFrom(databaseFile.get(), backupFile);
+    }
+
+    public boolean mergeFrom(Path file, String masterKey) {
         if (PathUtility.isFileInDirectory(Paths.get("./data/"), file)) {
             return false;
         }
         if (!Files.isReadable(file)) {
             return false;
         }
-        return database.executeUpdate("ATTACH ? AS file;", file.toAbsolutePath().toString()) == 0
-                && database.executeUpdate("RESTORE FROM file;") == 0
-                && database.executeUpdate("DETACH file;") == 0;
-    }
-
-    public boolean mergeFrom(Path file) {
-        if (PathUtility.isFileInDirectory(Paths.get("./data/"), file)) {
+        if (masterKey == null || masterKey.isBlank()) {
             return false;
         }
-        if (!Files.isReadable(file)) {
-            return false;
-        }
-        return database.executeUpdate("ATTACH ? AS file;", file.toAbsolutePath().toString()) == 0
+        return database.executeUpdate("ATTACH ? AS file KEY ?;", file.toAbsolutePath().toString(), masterKey) == 0
                 && database.executeUpdate("INSERT OR REPLACE INTO vaults (name, password, salt) VALUES (SELECT v.name, v.salt FROM vaults AS v);") == 0
                 && database.executeUpdate("DETACH file;") == 0;
     }
@@ -96,10 +96,10 @@ public final class VaultDatabase implements Database {
                 return Optional.empty();
             }
             return Optional.of(new Vault(
-                    resultSet.getString("name"),
-                    password,
                     resultSet.getString("salt"),
-                    resultSet.getString("password")
+                    resultSet.getString("password"),
+                    resultSet.getString("name"),
+                    password
             ));
         } catch (SQLException | NoSuchAlgorithmException | DerivationException | HashingException e) {
             LOGGER.severe("Error retrieving vault: " + e.getMessage());
