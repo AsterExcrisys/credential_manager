@@ -135,13 +135,13 @@ public class VaultManager implements AutoCloseable {
         if (salt.isEmpty()) {
             return false;
         }
-        if (!addVault(name, password, Base64.getEncoder().encodeToString(salt.get()))) {
+        if (!addVault(Base64.getEncoder().encodeToString(salt.get()), name, password)) {
             return false;
         }
         if (!authenticate(name, password)) {
             return false;
         }
-        return manager.importVault(file, password, salt.get());
+        return manager.importVault(file, password, salt.get(), false);
     }
 
     public boolean exportVault(Path file, String name, String password) {

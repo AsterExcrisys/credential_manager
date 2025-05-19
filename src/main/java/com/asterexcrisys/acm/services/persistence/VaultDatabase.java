@@ -77,7 +77,7 @@ public final class VaultDatabase implements Database {
             return false;
         }
         return database.executeUpdate("ATTACH ? AS file KEY ?;", file.toAbsolutePath().toString(), masterKey) == 0
-                && database.executeUpdate("INSERT OR REPLACE INTO vaults (name, password, salt) VALUES (SELECT v.name, v.salt FROM vaults AS v);") == 0
+                && database.executeUpdate("INSERT OR REPLACE INTO vaults (name, password, salt) SELECT v.name, v.salt FROM vaults AS v;") == 0
                 && database.executeUpdate("DETACH file;") == 0;
     }
 

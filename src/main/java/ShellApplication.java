@@ -2,6 +2,7 @@ import com.asterexcrisys.acm.CredentialManager;
 import com.asterexcrisys.acm.VaultManager;
 import com.asterexcrisys.acm.constants.GlobalConstants;
 import com.asterexcrisys.acm.constants.HashingConstants;
+import com.asterexcrisys.acm.services.console.builders.TableBuilder;
 import com.asterexcrisys.acm.utility.EncryptionUtility;
 import com.asterexcrisys.acm.utility.GlobalUtility;
 import com.asterexcrisys.acm.services.console.handlers.ShellSignalHandler;
@@ -39,10 +40,8 @@ import static org.jline.keymap.KeyMap.ctrl;
 @SuppressWarnings("unused")
 public class ShellApplication {
 
-    // TODO: gcc -fPIC -shared -o tpm_handler.so tpm_handler.c -ltss2-esys
-    // TODO: https://mvnrepository.com/artifact/com.github.oshi/oshi-core/6.8.1
-
     private static final Logger LOGGER = Logger.getLogger(ShellApplication.class.getName());
+    private static final boolean DEBUG = true;
 
     public static void main(String[] programArguments) {
         LineReader reader;
@@ -95,10 +94,12 @@ public class ShellApplication {
             logger.removeHandler(handler);
         }
         Files.createDirectories(Paths.get("./data/logs/"));
-        ConsoleHandler consoleHandler = new ConsoleHandler();
-        consoleHandler.setFormatter(new SimpleFormatter());
-        consoleHandler.setLevel(Level.ALL);
-        logger.addHandler(consoleHandler);
+        if (DEBUG) {
+            ConsoleHandler consoleHandler = new ConsoleHandler();
+            consoleHandler.setFormatter(new SimpleFormatter());
+            consoleHandler.setLevel(Level.ALL);
+            logger.addHandler(consoleHandler);
+        }
         FileHandler fileHandler = new FileHandler(
                 String.format("./data/logs/%s.log", GlobalUtility.getCurrentDate()),
                 true
@@ -166,11 +167,19 @@ public class ShellApplication {
 
     private static boolean checkGenericNonInteractiveCommands(VaultManager manager, String[] arguments) {
         if (GenericNonInteractiveCommandType.IMPORT.is(arguments[0])) {
-            // TODO: to be implemented
+            if (!manager.importVault(Paths.get(arguments[1]), arguments[2], arguments[3])) {
+                System.out.println("Failed to import vault with name: " + arguments[2]);
+                return true;
+            }
+            System.out.println("Succeeded to import vault with name: " + arguments[2]);
             return true;
         }
         if (GenericNonInteractiveCommandType.EXPORT.is(arguments[0])) {
-            // TODO: to be implemented
+            if (!manager.exportVault(Paths.get(arguments[1]), arguments[2], arguments[3])) {
+                System.out.println("Failed to export vault with name: " + arguments[2]);
+                return true;
+            }
+            System.out.println("Succeeded to export vault with name: " + arguments[2]);
             return true;
         }
         if (GenericNonInteractiveCommandType.TEST_GIVEN.is(arguments[0])) {
@@ -244,6 +253,7 @@ public class ShellApplication {
         return false;
     }
 
+    // TODO: find a cleaner way to print tables in GET and GET_ALL
     private static boolean checkCredentialCommands(VaultManager vaultManager, String[] arguments) {
         Optional<CredentialManager> credentialManager = vaultManager.getManager();
         if (credentialManager.isEmpty()) {
@@ -256,9 +266,26 @@ public class ShellApplication {
                 System.out.println("No credential found with platform: " + arguments[1]);
                 return false;
             }
-            System.out.println("Platform: " + credential.get().getPlatform());
-            System.out.println("Username: " + credential.get().getDecryptedUsername());
-            System.out.println("Password: " + credential.get().getDecryptedPassword());
+            Optional<String> username = credential.get().getDecryptedUsername();
+            Optional<String> password = credential.get().getDecryptedPassword();
+            if (username.isEmpty() || password.isEmpty()) {
+                System.out.println("Failed to decrypt credential of platform: " + arguments[1]);
+                return false;
+            }
+            TableBuilder builder = new TableBuilder(CellSize.WRAP_SMALL);
+            builder.addAttribute("Platform").addAttribute("Username").addAttribute("Password");
+            builder.addRecord(List.of(
+                    credential.get().getPlatform(),
+                    username.get(),
+                    password.get()
+            ));
+            Optional<String> table = builder.build();
+            if (table.isEmpty()) {
+                System.out.println("Failed to build table for platform: " + arguments[1]);
+                return false;
+            }
+            System.out.println(table.get());
+            builder.clear();
             return false;
         }
         if (CredentialCommandType.GET_ALL.is(arguments[0])) {
@@ -267,7 +294,18 @@ public class ShellApplication {
                 System.out.println("No credential found");
                 return false;
             }
-            System.out.println(credentials.get());
+            TableBuilder builder = new TableBuilder(CellSize.WRAP_SMALL);
+            builder.addAttribute("Platform");
+            for (String credential : credentials.get()) {
+                builder.addRecord(List.of(credential));
+            }
+            Optional<String> table = builder.build();
+            if (table.isEmpty()) {
+                System.out.println("Failed to build table");
+                return false;
+            }
+            System.out.println(table.get());
+            builder.clear();
             return false;
         }
         if (CredentialCommandType.SET.is(arguments[0])) {

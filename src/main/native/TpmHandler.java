@@ -1,25 +1,30 @@
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
 
-public class TPMInterop {
-    private static final Linker linker = Linker.nativeLinker();
+public class TpmHandler {
+
+    private static final Linker linker;
+
+    static {
+        linker = Linker.nativeLinker();
+    }
 
     public static void main(String[] args) throws Throwable {
-        System.load("/full/path/to/native/libtpmseal.so");
+        System.load("tpm_handler.so");
 
         SymbolLookup symbols = SymbolLookup.loaderLookup();
 
-        MethodHandle init_tpm = linker.downcallHandle(
-            symbols.find("init_tpm").orElseThrow(),
+        MethodHandle initializeTpm = linker.downcallHandle(
+            symbols.find("initialize_tpm").orElseThrow(),
             FunctionDescriptor.of(ValueLayout.JAVA_INT)
         );
 
-        MethodHandle cleanup_tpm = linker.downcallHandle(
-            symbols.find("cleanup_tpm").orElseThrow(),
+        MethodHandle finalizeTpm = linker.downcallHandle(
+            symbols.find("finalize_tpm").orElseThrow(),
             FunctionDescriptor.ofVoid()
         );
 
-        int result = (int) init_tpm.invokeExact();
+        int result = (int) initializeTpm.invokeExact();
         if (result != 0) {
             System.err.println("TPM initialization failed: " + result);
             return;
@@ -28,7 +33,8 @@ public class TPMInterop {
         System.out.println("TPM initialized successfully.");
 
         // Clean up
-        cleanup_tpm.invokeExact();
+        finalizeTpm.invokeExact();
         System.out.println("TPM cleaned up.");
     }
+
 }

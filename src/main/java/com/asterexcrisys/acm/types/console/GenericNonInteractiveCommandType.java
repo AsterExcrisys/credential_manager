@@ -12,16 +12,16 @@ public enum GenericNonInteractiveCommandType implements CommandType {
     IMPORT(
             "-iv",
             "importVault",
-            2,
-            new Class[]{String.class, String.class},
-            new Validator[]{new PathValidator(), new PasswordValidator()}
+            3,
+            new Class[]{String.class, String.class, String.class},
+            new Validator[]{new PathValidator(), new GenericValidator(), new PasswordValidator()}
     ),
     EXPORT(
             "-ev",
             "exportVault",
-            2,
-            new Class[]{String.class, String.class},
-            new Validator[]{new GenericValidator(), new PasswordValidator()}
+            3,
+            new Class[]{String.class, String.class, String.class},
+            new Validator[]{new PathValidator(), new GenericValidator(), new PasswordValidator()}
     ),
     TEST_GIVEN(
             "-tgv",

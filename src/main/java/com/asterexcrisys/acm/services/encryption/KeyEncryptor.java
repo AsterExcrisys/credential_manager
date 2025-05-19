@@ -9,7 +9,6 @@ import javax.crypto.spec.SecretKeySpec;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
-import java.security.spec.KeySpec;
 import java.util.Base64;
 import java.util.Objects;
 import java.util.Optional;
@@ -56,16 +55,18 @@ public final class KeyEncryptor implements Encryptor {
         if (salt == null || salt.length != HashingConstants.SALT_SIZE) {
             return Optional.empty();
         }
+        PBEKeySpec pbeKeySpec = new PBEKeySpec(password.toCharArray(), salt, HashingConstants.KEY_ITERATION_COUNT, HashingConstants.KEY_SIZE);
         try {
-            KeySpec keySpec = new PBEKeySpec(password.toCharArray(), salt, HashingConstants.KEY_ITERATION_COUNT, HashingConstants.KEY_SIZE);
             SecretKeyFactory secretKeyFactory = SecretKeyFactory.getInstance(HashingConstants.KEY_DERIVATION_ALGORITHM);
             return Optional.of(new SecretKeySpec(
-                    secretKeyFactory.generateSecret(keySpec).getEncoded(),
-                    EncryptionConstants.KEY_GENERATION_ALGORITHM)
-            );
+                    secretKeyFactory.generateSecret(pbeKeySpec).getEncoded(),
+                    EncryptionConstants.KEY_GENERATION_ALGORITHM
+            ));
         } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
             LOGGER.severe("Error deriving key: " + e.getMessage());
             return Optional.empty();
+        } finally {
+            pbeKeySpec.clearPassword();
         }
     }
 

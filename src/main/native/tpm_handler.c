@@ -3,25 +3,26 @@
 #include <stdlib.h>
 #include <string.h>
 
+// TODO: gcc -fPIC -shared -o tpm_handler.so tpm_handler.c -ltss2-esys
+
 // TPM context
 ESYS_CONTEXT *esys_ctx;
 
 // Initialize TPM ESAPI context
-int init_tpm() {
+int initialize_tpm() {
     TSS2_RC rc = Esys_Initialize(&esys_ctx, NULL, NULL);
     return rc == TSS2_RC_SUCCESS ? 0 : -1;
 }
 
 // Finalize TPM context
-void cleanup_tpm() {
+void finalize_tpm() {
     if (esys_ctx) {
         Esys_Finalize(&esys_ctx);
     }
 }
 
 // Seal a key into TPM
-int seal_key(const uint8_t *keyData, size_t keyLen,
-             TPM2B_PRIVATE **outPrivate, TPM2B_PUBLIC **outPublic) {
+int seal_key(const uint8_t *keyData, size_t keyLen, TPM2B_PRIVATE **outPrivate, TPM2B_PUBLIC **outPublic) {
     TSS2_RC rc;
     ESYS_TR primaryHandle;
 
@@ -100,8 +101,7 @@ int seal_key(const uint8_t *keyData, size_t keyLen,
 }
 
 // Unseal key from TPM
-int unseal_key(const TPM2B_PRIVATE *sealedPrivate, const TPM2B_PUBLIC *sealedPublic,
-               uint8_t *outKeyData, size_t *outLen) {
+int unseal_key(const TPM2B_PRIVATE *sealedPrivate, const TPM2B_PUBLIC *sealedPublic, uint8_t *outKeyData, size_t *outLen) {
     TSS2_RC rc;
     ESYS_TR primaryHandle;
     ESYS_TR sealedHandle;

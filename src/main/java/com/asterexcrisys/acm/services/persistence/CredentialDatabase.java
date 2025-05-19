@@ -74,7 +74,7 @@ public final class CredentialDatabase implements Database {
             return false;
         }
         return database.executeUpdate("ATTACH ? AS file KEY ?;", file.toAbsolutePath().toString(), masterKey) == 0
-                && database.executeUpdate("INSERT OR REPLACE INTO credentials (platform, username, password, key) VALUES (SELECT c.platform, c.username, c.password, c.key FROM file.credentials AS c);") == 0
+                && database.executeUpdate("INSERT OR REPLACE INTO credentials (platform, username, password, key) SELECT c.platform, c.username, c.password, c.key FROM file.credentials AS c;") == 0
                 && database.executeUpdate("DETACH file;") == 0;
     }
 
