@@ -19,7 +19,7 @@ public class TableBuilder implements AutoCloseable {
     public TableBuilder() {
         attributes = new ArrayList<>();
         records = new ArrayList<>();
-        cellSize = CellSize.MEDIUM;
+        cellSize = CellSize.WRAP_MEDIUM;
     }
 
     public TableBuilder(CellSize cellSize) {
