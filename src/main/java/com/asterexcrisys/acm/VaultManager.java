@@ -98,7 +98,7 @@ public class VaultManager implements AutoCloseable {
             Files.createDirectories(Paths.get(String.format("./data/%s/", name)));
             return true;
         } catch (NoSuchAlgorithmException | IOException | HashingException | DerivationException e) {
-            LOGGER.severe("Error adding vault: " + e.getMessage());
+            LOGGER.warning("Error adding vault: " + e.getMessage());
             return false;
         }
     }
@@ -114,7 +114,7 @@ public class VaultManager implements AutoCloseable {
             Files.createDirectories(Paths.get(String.format("./data/%s/", name)));
             return true;
         } catch (NoSuchAlgorithmException | IOException | HashingException | DerivationException e) {
-            LOGGER.severe("Error adding vault: " + e.getMessage());
+            LOGGER.warning("Error adding vault: " + e.getMessage());
             return false;
         }
     }

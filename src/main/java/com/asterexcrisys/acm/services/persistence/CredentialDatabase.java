@@ -100,7 +100,7 @@ public final class CredentialDatabase implements Database {
                     resultSet.getString("password")
             ));
         } catch (SQLException | EncryptionException e) {
-            LOGGER.severe("Error retrieving credential: " + e.getMessage());
+            LOGGER.warning("Error retrieving credential: " + e.getMessage());
             return Optional.empty();
         }
     }
@@ -113,7 +113,7 @@ public final class CredentialDatabase implements Database {
             }
             return Optional.of(credentials);
         } catch (SQLException e) {
-            LOGGER.severe("Error retrieving all credentials: " + e.getMessage());
+            LOGGER.warning("Error retrieving all credentials: " + e.getMessage());
             return Optional.empty();
         }
     }

@@ -10,7 +10,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 @SuppressWarnings("unused")
-public class TableBuilder {
+public class TableBuilder implements AutoCloseable {
 
     private final List<String> attributes;
     private final List<List<String>> records;
@@ -100,21 +100,25 @@ public class TableBuilder {
         return this;
     }
 
-    public Optional<String> build() {
+    public String build() throws IllegalStateException {
         Optional<String> tableHead = createTableHead(attributes, cellSize);
         if (tableHead.isEmpty()) {
-            return Optional.empty();
+            throw new IllegalStateException();
         }
         Optional<String> tableBody = createTableBody(records, attributes.size(), cellSize);
         if (tableBody.isEmpty()) {
-            return Optional.empty();
+            throw new IllegalStateException();
         }
-        return Optional.of(tableHead.get().concat(tableBody.get()));
+        return tableHead.get().concat(tableBody.get());
     }
 
     public void clear() {
         attributes.clear();
         records.clear();
+    }
+
+    public void close() {
+        clear();
     }
 
     private static String createTableSeparator(int attributesCount, int attributesWidth) {
@@ -147,7 +151,7 @@ public class TableBuilder {
             }
         }
         for (int i = 0; i < Math.max(maxHeight, cellSize.height()); i++) {
-            tableRow.append("+ ");
+            tableRow.append("| ");
             for (String[] justifiedValue : justifiedValues) {
                 if (justifiedValue.length > i) {
                     if (justifiedValue[i] == null) {
@@ -158,7 +162,7 @@ public class TableBuilder {
                 } else {
                     tableRow.append(String.format("%-" + maxWidth + "s", ConsoleConstants.EMPTY_CELL));
                 }
-                tableRow.append(" + ");
+                tableRow.append(" | ");
             }
             tableRow.append('\n');
         }

@@ -87,8 +87,12 @@ public enum CredentialCommandType implements CommandType {
         return argumentValidators;
     }
 
+    public static boolean has(String command) {
+        return fromValue(command).isPresent();
+    }
+
     public static Optional<CredentialCommandType> fromValue(String value) {
-        if (value == null) {
+        if (value == null || value.isBlank()) {
             return Optional.empty();
         }
         for (CredentialCommandType type : CredentialCommandType.values()) {

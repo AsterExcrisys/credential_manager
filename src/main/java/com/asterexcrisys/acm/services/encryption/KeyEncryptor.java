@@ -63,7 +63,7 @@ public final class KeyEncryptor implements Encryptor {
                     EncryptionConstants.KEY_GENERATION_ALGORITHM
             ));
         } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
-            LOGGER.severe("Error deriving key: " + e.getMessage());
+            LOGGER.warning("Error deriving key: " + e.getMessage());
             return Optional.empty();
         } finally {
             pbeKeySpec.clearPassword();

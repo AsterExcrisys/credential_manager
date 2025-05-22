@@ -9,21 +9,21 @@ import java.util.Optional;
 @SuppressWarnings("unused")
 public enum GenericNonInteractiveCommandType implements CommandType {
 
-    IMPORT(
+    IMPORT_VAULT(
             "-iv",
             "importVault",
             3,
             new Class[]{String.class, String.class, String.class},
             new Validator[]{new PathValidator(), new GenericValidator(), new PasswordValidator()}
     ),
-    EXPORT(
+    EXPORT_VAULT(
             "-ev",
             "exportVault",
             3,
             new Class[]{String.class, String.class, String.class},
             new Validator[]{new PathValidator(), new GenericValidator(), new PasswordValidator()}
     ),
-    TEST_GIVEN(
+    TEST_GIVEN_PASSWORD(
             "-tgv",
             "testGivenPassword",
             1,
@@ -69,8 +69,12 @@ public enum GenericNonInteractiveCommandType implements CommandType {
         return argumentValidators;
     }
 
+    public static boolean has(String command) {
+        return fromValue(command).isPresent();
+    }
+
     public static Optional<GenericNonInteractiveCommandType> fromValue(String value) {
-        if (value == null) {
+        if (value == null || value.isBlank()) {
             return Optional.empty();
         }
         for (GenericNonInteractiveCommandType type : GenericNonInteractiveCommandType.values()) {

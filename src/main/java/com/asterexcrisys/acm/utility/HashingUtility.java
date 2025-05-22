@@ -53,7 +53,7 @@ public final class HashingUtility {
             }
             return Optional.of(Base64.getEncoder().encodeToString(result.get()));
         } catch (NoSuchAlgorithmException e) {
-            LOGGER.severe("Error hashing password: " + e.getMessage());
+            LOGGER.warning("Error hashing password: " + e.getMessage());
             return Optional.empty();
         }
     }

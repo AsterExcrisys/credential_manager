@@ -50,7 +50,7 @@ public final class GenericEncryptor implements Encryptor {
             generator.init(EncryptionConstants.KEY_SIZE);
             return Optional.ofNullable(generator.generateKey());
         } catch (NoSuchAlgorithmException | InvalidParameterException e) {
-            LOGGER.severe("Error generating key: " + e.getMessage());
+            LOGGER.warning("Error generating key: " + e.getMessage());
             return Optional.empty();
         }
     }

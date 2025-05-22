@@ -8,9 +8,16 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Optional;
+import java.util.logging.Logger;
 
 @SuppressWarnings("unused")
 public final class DatabaseUtility {
+
+    private static final Logger LOGGER = Logger.getLogger(DatabaseUtility.class.getName());
+
+    private DatabaseUtility() {
+        // This class should not be instantiable
+    }
 
     public static boolean backupTo(Path databaseFile, Path backupFile) {
         if (!PathUtility.isFileInDirectory(Paths.get("./data/"), databaseFile)) {
@@ -29,6 +36,7 @@ public final class DatabaseUtility {
             Files.copy(databaseFile, backupFile, StandardCopyOption.REPLACE_EXISTING);
             return true;
         } catch (IOException e) {
+            LOGGER.warning("Error backing up database: " + e.getMessage());
             return false;
         }
     }
@@ -50,6 +58,7 @@ public final class DatabaseUtility {
             Files.copy(backupFile, databaseFile, StandardCopyOption.REPLACE_EXISTING);
             return true;
         } catch (IOException e) {
+            LOGGER.warning("Error restoring database: " + e.getMessage());
             return false;
         }
     }
@@ -66,6 +75,7 @@ public final class DatabaseUtility {
             accessor.write(salt);
             return true;
         } catch (IOException e) {
+            LOGGER.warning("Error constructing database export: " + e.getMessage());
             return false;
         }
     }
@@ -81,6 +91,7 @@ public final class DatabaseUtility {
             accessor.setLength(accessor.length() - HashingConstants.SALT_SIZE);
             return Optional.of(salt);
         } catch (IOException e) {
+            LOGGER.warning("Error deconstructing database import: " + e.getMessage());
             return Optional.empty();
         }
     }

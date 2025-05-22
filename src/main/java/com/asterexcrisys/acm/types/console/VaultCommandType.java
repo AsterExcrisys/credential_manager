@@ -73,8 +73,12 @@ public enum VaultCommandType implements CommandType {
         return argumentValidators;
     }
 
+    public static boolean has(String command) {
+        return fromValue(command).isPresent();
+    }
+
     public static Optional<VaultCommandType> fromValue(String value) {
-        if (value == null) {
+        if (value == null || value.isBlank()) {
             return Optional.empty();
         }
         for (VaultCommandType type : VaultCommandType.values()) {

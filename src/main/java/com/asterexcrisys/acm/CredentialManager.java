@@ -67,7 +67,7 @@ public class CredentialManager implements AutoCloseable {
                     vault.getEncryptor()
             );
         } catch (EncryptionException e) {
-            LOGGER.severe("Error updating credential: " + e.getMessage());
+            LOGGER.warning("Error updating credential: " + e.getMessage());
             return false;
         }
     }
@@ -82,7 +82,7 @@ public class CredentialManager implements AutoCloseable {
                     vault.getEncryptor()
             );
         } catch (EncryptionException e) {
-            LOGGER.severe("Error adding credential: " + e.getMessage());
+            LOGGER.warning("Error adding credential: " + e.getMessage());
             return false;
         }
     }

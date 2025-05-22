@@ -102,7 +102,7 @@ public final class VaultDatabase implements Database {
                     password
             ));
         } catch (SQLException | NoSuchAlgorithmException | DerivationException | HashingException e) {
-            LOGGER.severe("Error retrieving vault: " + e.getMessage());
+            LOGGER.warning("Error retrieving vault: " + e.getMessage());
             return Optional.empty();
         }
     }
@@ -117,7 +117,7 @@ public final class VaultDatabase implements Database {
             }
             return Optional.of(vaults);
         } catch (SQLException e) {
-            LOGGER.severe("Error retrieving all vaults: " + e.getMessage());
+            LOGGER.warning("Error retrieving all vaults: " + e.getMessage());
             return Optional.empty();
         }
     }

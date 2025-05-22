@@ -77,7 +77,7 @@ public final class CoreDatabase implements Database {
             connection.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
             return true;
         } catch (SQLException e) {
-            LOGGER.severe("Error beginning the transaction: " + e.getMessage());
+            LOGGER.warning("Error beginning the transaction: " + e.getMessage());
             return false;
         }
     }
@@ -94,7 +94,7 @@ public final class CoreDatabase implements Database {
             }
             return true;
         } catch (SQLException e) {
-            LOGGER.severe("Error ending the transaction: " + e.getMessage());
+            LOGGER.warning("Error ending the transaction: " + e.getMessage());
             return false;
         }
     }
@@ -110,7 +110,7 @@ public final class CoreDatabase implements Database {
             }
             return preparedStatement.executeQuery();
         } catch (SQLException e) {
-            LOGGER.severe("Error executing query: " + e.getMessage());
+            LOGGER.warning("Error executing query: " + e.getMessage());
             return null;
         }
     }
@@ -126,7 +126,7 @@ public final class CoreDatabase implements Database {
             }
             return preparedStatement.executeUpdate();
         } catch (SQLException e) {
-            LOGGER.severe("Error executing update: " + e.getMessage());
+            LOGGER.warning("Error executing update: " + e.getMessage());
             return -1;
         }
     }

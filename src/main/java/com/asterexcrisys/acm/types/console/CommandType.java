@@ -18,6 +18,10 @@ public sealed interface CommandType permits GenericNonInteractiveCommandType, Ge
 
     Validator[] argumentValidators();
 
+    static boolean has(String command) {
+        return false;
+    }
+
     static Optional<CommandType> fromValue(String value) {
         return Optional.empty();
     }

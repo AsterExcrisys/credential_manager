@@ -56,7 +56,7 @@ public final class CoreEncryptor implements Encryptor {
             return Optional.ofNullable(Base64.getEncoder().encodeToString(result.get()));
         } catch (NoSuchPaddingException | NoSuchAlgorithmException | InvalidAlgorithmParameterException |
                  IllegalBlockSizeException | InvalidKeyException | BadPaddingException e) {
-            LOGGER.severe("Error encrypting data: " + e.getMessage());
+            LOGGER.warning("Error encrypting data: " + e.getMessage());
             return Optional.empty();
         }
     }
@@ -76,7 +76,7 @@ public final class CoreEncryptor implements Encryptor {
             return Optional.of(new String(result, StandardCharsets.UTF_8));
         } catch (NoSuchPaddingException | IllegalBlockSizeException | NoSuchAlgorithmException |
                  InvalidAlgorithmParameterException | BadPaddingException | InvalidKeyException e) {
-            LOGGER.severe("Error decrypting data: " + e.getMessage());
+            LOGGER.warning("Error decrypting data: " + e.getMessage());
             return Optional.empty();
         }
     }

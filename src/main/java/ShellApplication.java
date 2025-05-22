@@ -3,15 +3,13 @@ import com.asterexcrisys.acm.VaultManager;
 import com.asterexcrisys.acm.constants.GlobalConstants;
 import com.asterexcrisys.acm.constants.HashingConstants;
 import com.asterexcrisys.acm.services.console.builders.TableBuilder;
+import com.asterexcrisys.acm.types.utility.*;
 import com.asterexcrisys.acm.utility.EncryptionUtility;
 import com.asterexcrisys.acm.utility.GlobalUtility;
 import com.asterexcrisys.acm.services.console.handlers.ShellSignalHandler;
 import com.asterexcrisys.acm.services.console.parsers.ShellArgumentParser;
 import com.asterexcrisys.acm.types.console.*;
 import com.asterexcrisys.acm.types.encryption.Credential;
-import com.asterexcrisys.acm.types.utility.Pair;
-import com.asterexcrisys.acm.types.utility.PasswordStrength;
-import com.asterexcrisys.acm.types.utility.Result;
 import org.jline.keymap.KeyMap;
 import org.jline.reader.Binding;
 import org.jline.reader.LineReader;
@@ -19,6 +17,7 @@ import org.jline.reader.LineReader.Option;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.reader.Reference;
 import org.jline.reader.impl.DefaultParser;
+import org.jline.reader.impl.completer.AggregateCompleter;
 import org.jline.reader.impl.completer.StringsCompleter;
 import org.jline.reader.impl.history.DefaultHistory;
 import org.jline.terminal.Terminal;
@@ -29,11 +28,9 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.Base64;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.logging.*;
+import java.util.stream.Stream;
 import static org.jline.keymap.KeyMap.alt;
 import static org.jline.keymap.KeyMap.ctrl;
 
@@ -41,18 +38,31 @@ import static org.jline.keymap.KeyMap.ctrl;
 public class ShellApplication {
 
     private static final Logger LOGGER = Logger.getLogger(ShellApplication.class.getName());
-    private static final boolean DEBUG = true;
+    private static final boolean DEBUG = false;
 
     public static void main(String[] programArguments) {
         LineReader reader;
         try {
             Files.createDirectories(Paths.get("./data/"));
+            LogManager.getLogManager().reset();
             configureLogger(LogManager.getLogManager().getLogger(GlobalConstants.ROOT_LOGGER));
             reader = configureReader();
-            if (validateArguments(programArguments, ShellType.NON_INTERACTIVE)) {
-                return;
+            switch (validateArguments(programArguments, ShellType.NON_INTERACTIVE)) {
+                case Triple(FlowInstruction instruction, EvaluationResult result, String message) when instruction == FlowInstruction.TERMINATE -> {
+                    LOGGER.log(result.level(), message);
+                    System.out.println(message);
+                    return;
+                }
+                case Triple(FlowInstruction instruction, EvaluationResult result, String message) when message != null -> {
+                    LOGGER.log(result.level(), message);
+                    System.out.println(message);
+                }
+                default -> {
+                    // No operation needed
+                }
             }
         } catch (Exception e) {
+            LOGGER.severe("Error starting up application: " + e.getMessage());
             System.out.println("An error occurred during the application startup");
             System.exit(1);
             return;
@@ -65,25 +75,91 @@ public class ShellApplication {
                         HashingConstants.SALT_SIZE
                 ))
         )) {
-            if (checkGenericNonInteractiveCommands(manager, programArguments)) {
-                return;
+            switch (checkGenericNonInteractiveCommands(manager, programArguments)) {
+                case Triple(FlowInstruction instruction, EvaluationResult result, String message) when instruction == FlowInstruction.TERMINATE -> {
+                    LOGGER.log(result.level(), message);
+                    System.out.println(message);
+                    return;
+                }
+                case Triple(FlowInstruction instruction, EvaluationResult result, String message) when message != null -> {
+                    LOGGER.log(result.level(), message);
+                    System.out.println(message);
+                }
+                default -> {
+                    // No operation needed
+                }
             }
-            if (checkVaultCommands(manager, programArguments)) {
-                return;
+            switch (checkVaultCommands(manager, programArguments)) {
+                case Triple(FlowInstruction instruction, EvaluationResult result, String message) when instruction == FlowInstruction.TERMINATE -> {
+                    LOGGER.log(result.level(), message);
+                    System.out.println(message);
+                    return;
+                }
+                case Triple(FlowInstruction instruction, EvaluationResult result, String message) when message != null -> {
+                    LOGGER.log(result.level(), message);
+                    System.out.println(message);
+                }
+                default -> {
+                    // No operation needed
+                }
             }
             while (true) {
-                String[] commandArguments = reader.readLine(GlobalConstants.SHELL_PROMPT).trim().split("\\s+");
-                if (validateArguments(commandArguments, ShellType.INTERACTIVE)) {
-                    continue;
+                String[] shellArguments = reader.readLine(GlobalConstants.SHELL_PROMPT).trim().split("\\s+");
+                switch (validateArguments(shellArguments, ShellType.INTERACTIVE)) {
+                    case Triple(FlowInstruction instruction, EvaluationResult result, String message) when instruction == FlowInstruction.TERMINATE -> {
+                        LOGGER.log(result.level(), message);
+                        System.out.println(message);
+                        return;
+                    }
+                    case Triple(FlowInstruction instruction, EvaluationResult result, String message) when message != null -> {
+                        LOGGER.log(result.level(), message);
+                        System.out.println(message);
+                    }
+                    default -> {
+                        // No operation needed
+                    }
                 }
-                if (checkGenericInteractiveCommands(manager, commandArguments)) {
-                    return;
+                switch (checkGenericInteractiveCommands(manager, shellArguments)) {
+                    case Triple(LoopInstruction instruction, EvaluationResult result, String message) when instruction == LoopInstruction.EXIT -> {
+                        LOGGER.log(result.level(), message);
+                        System.out.println(message);
+                        return;
+                    }
+                    case Triple(LoopInstruction instruction, EvaluationResult result, String message) when instruction == LoopInstruction.SKIP -> {
+                        LOGGER.log(result.level(), message);
+                        System.out.println(message);
+                        continue;
+                    }
+                    case Triple(LoopInstruction instruction, EvaluationResult result, String message) when message != null -> {
+                        LOGGER.log(result.level(), message);
+                        System.out.println(message);
+                    }
+                    default -> {
+                        // No operation needed
+                    }
                 }
-                if (checkCredentialCommands(manager, commandArguments)) {
-                    return;
+                switch (checkCredentialCommands(manager, shellArguments)) {
+                    case Triple(LoopInstruction instruction, EvaluationResult result, String message) when instruction == LoopInstruction.EXIT -> {
+                        LOGGER.log(result.level(), message);
+                        System.out.println(message);
+                        return;
+                    }
+                    case Triple(LoopInstruction instruction, EvaluationResult result, String message) when instruction == LoopInstruction.SKIP -> {
+                        LOGGER.log(result.level(), message);
+                        System.out.println(message);
+                        continue;
+                    }
+                    case Triple(LoopInstruction instruction, EvaluationResult result, String message) when message != null -> {
+                        LOGGER.log(result.level(), message);
+                        System.out.println(message);
+                    }
+                    default -> {
+                        // No operation needed
+                    }
                 }
             }
         } catch (Exception e) {
+            LOGGER.severe("Error executing application: " + e.getMessage());
             System.out.println("An error occurred during the application execution");
             System.exit(1);
         }
@@ -104,7 +180,7 @@ public class ShellApplication {
                 String.format("./data/logs/%s.log", GlobalUtility.getCurrentDate()),
                 true
         );
-        fileHandler.setLevel(Level.ALL);
+        fileHandler.setLevel(Level.CONFIG);
         fileHandler.setFormatter(new SimpleFormatter());
         logger.addHandler(fileHandler);
     }
@@ -115,7 +191,10 @@ public class ShellApplication {
         builder.appName(String.format("%s (%s)", GlobalConstants.APPLICATION_NAME, GlobalConstants.APPLICATION_VERSION));
         builder.terminal(configureTerminal());
         builder.parser(new DefaultParser());
-        builder.completer(new StringsCompleter(Arrays.stream(CredentialCommandType.values()).map(CredentialCommandType::longName).toArray(String[]::new)));
+        builder.completer(new AggregateCompleter(
+                new StringsCompleter(Stream.of(GenericInteractiveCommandType.values()).map(CommandType::longName).toArray(String[]::new)),
+                new StringsCompleter(Stream.of(CredentialCommandType.values()).map(CommandType::longName).toArray(String[]::new))
+        ));
         builder.history(new DefaultHistory());
         builder.variable(LineReader.HISTORY_FILE, Paths.get("./data/console/history.txt"));
         builder.option(Option.HISTORY_BEEP, false);
@@ -150,197 +229,323 @@ public class ShellApplication {
         return builder.build();
     }
 
-    private static boolean validateArguments(String[] arguments, ShellType type) {
+    private static Triple<FlowInstruction, EvaluationResult, String> validateArguments(String[] arguments, ShellType type) {
         ShellArgumentParser parser = new ShellArgumentParser(type.filter());
-        Result<? extends CommandType, String> result = parser.parse(arguments);
+        Result<? extends CommandType, String> result = parser.parseOld(arguments);
         if (result.isSuccess()) {
-            return false;
+            return Triple.of(FlowInstruction.PROCEED, EvaluationResult.SUCCESS, null);
         }
         Optional<String> error = result.getError();
-        if (error.isPresent()) {
-            System.out.println(error.get());
-        } else {
-            System.out.println("Unknown error");
-        }
-        return true;
+        return Triple.of(FlowInstruction.TERMINATE, EvaluationResult.FAILURE, error.orElse("Unknown error"));
     }
 
-    private static boolean checkGenericNonInteractiveCommands(VaultManager manager, String[] arguments) {
-        if (GenericNonInteractiveCommandType.IMPORT.is(arguments[0])) {
+    private static Triple<FlowInstruction, EvaluationResult, String> checkGenericNonInteractiveCommands(VaultManager manager, String[] arguments) {
+        if (GenericNonInteractiveCommandType.IMPORT_VAULT.is(arguments[0])) {
             if (!manager.importVault(Paths.get(arguments[1]), arguments[2], arguments[3])) {
-                System.out.println("Failed to import vault with name: " + arguments[2]);
-                return true;
+                return Triple.of(
+                        FlowInstruction.TERMINATE,
+                        EvaluationResult.FAILURE,
+                        "Failed to import vault with name: " + arguments[2]
+                );
             }
-            System.out.println("Succeeded to import vault with name: " + arguments[2]);
-            return true;
+            return Triple.of(
+                    FlowInstruction.TERMINATE,
+                    EvaluationResult.SUCCESS,
+                    "Succeeded to import vault with name: " + arguments[2]
+            );
         }
-        if (GenericNonInteractiveCommandType.EXPORT.is(arguments[0])) {
+        if (GenericNonInteractiveCommandType.EXPORT_VAULT.is(arguments[0])) {
             if (!manager.exportVault(Paths.get(arguments[1]), arguments[2], arguments[3])) {
-                System.out.println("Failed to export vault with name: " + arguments[2]);
-                return true;
+                return Triple.of(
+                        FlowInstruction.TERMINATE,
+                        EvaluationResult.FAILURE,
+                        "Failed to export vault with name: " + arguments[2]
+                );
             }
-            System.out.println("Succeeded to export vault with name: " + arguments[2]);
-            return true;
+            return Triple.of(
+                    FlowInstruction.TERMINATE,
+                    EvaluationResult.SUCCESS,
+                    "Succeeded to export vault with name: " + arguments[2]
+            );
         }
-        if (GenericNonInteractiveCommandType.TEST_GIVEN.is(arguments[0])) {
-            System.out.println("Advices: " + manager.testGivenPassword(arguments[1]));
-            return true;
+        if (GenericNonInteractiveCommandType.TEST_GIVEN_PASSWORD.is(arguments[0])) {
+            Pair<PasswordStrength, String[]> advices = manager.testGivenPassword(arguments[1]);
+            return Triple.of(
+                    FlowInstruction.TERMINATE,
+                    EvaluationResult.SUCCESS,
+                    buildTable(
+                            CellSize.WRAP_SMALL,
+                            List.of("Strength"),
+                            List.of(List.of(advices.first().name()))
+                    ) + '\n' + buildTable(
+                            CellSize.WRAP_MEDIUM,
+                            List.of("Advice"),
+                            Stream.of(advices.second()).map(Collections::singletonList).toList()
+                    )
+            );
         }
-        return false;
+        return Triple.of(FlowInstruction.PROCEED, EvaluationResult.SUCCESS, null);
     }
 
-    private static boolean checkVaultCommands(VaultManager manager, String[] arguments) {
+    private static Triple<FlowInstruction, EvaluationResult, String> checkVaultCommands(VaultManager manager, String[] arguments) {
         if (VaultCommandType.GET.is(arguments[0])) {
             if (!manager.authenticate(arguments[1], arguments[2])) {
-                System.out.println("Authentication failed to vault with name: " + arguments[1]);
-                return true;
+                return Triple.of(
+                        FlowInstruction.TERMINATE,
+                        EvaluationResult.FAILURE,
+                        "Authentication failed to vault with name: " + arguments[1]
+                );
             }
-            System.out.println("Authentication succeeded to vault with name: " + arguments[1]);
-            return false;
+            return Triple.of(
+                    FlowInstruction.PROCEED,
+                    EvaluationResult.SUCCESS,
+                    "Authentication succeeded to vault with name: " + arguments[1]
+            );
         }
         if (VaultCommandType.GET_ALL.is(arguments[0])) {
-            System.out.println("Existing vaults: " + manager.getAllVaults());
-            return true;
+            Optional<List<String>> vaults = manager.getAllVaults();
+            if (vaults.isEmpty()) {
+                return Triple.of(
+                        FlowInstruction.TERMINATE,
+                        EvaluationResult.FAILURE,
+                        "Failed to get all vaults"
+                );
+            }
+            return Triple.of(
+                    FlowInstruction.TERMINATE,
+                    EvaluationResult.SUCCESS,
+                    buildTable(
+                            CellSize.WRAP_SMALL,
+                            List.of("Name"),
+                            vaults.get().stream().map(Collections::singletonList).toList()
+                    )
+            );
         }
         if (VaultCommandType.ADD.is(arguments[0])) {
             if (!manager.addVault(arguments[1], arguments[2])) {
-                System.out.println("Failed to add vault with name: " + arguments[1]);
-                return true;
+                return Triple.of(
+                        FlowInstruction.TERMINATE,
+                        EvaluationResult.FAILURE,
+                        "Failed to add vault with name: " + arguments[1]
+                );
             }
-            System.out.println("Succeeded to add vault with name: " + arguments[1]);
-            return true;
+            return Triple.of(
+                    FlowInstruction.TERMINATE,
+                    EvaluationResult.SUCCESS,
+                    "Succeeded to add vault with name: " + arguments[1]
+            );
         }
         if (VaultCommandType.REMOVE.is(arguments[0])) {
             if (!manager.removeVault(arguments[1], arguments[2])) {
-                System.out.println("Failed to remove vault with name: " + arguments[1]);
-                return true;
+                return Triple.of(
+                        FlowInstruction.TERMINATE,
+                        EvaluationResult.FAILURE,
+                        "Failed to remove vault with name: " + arguments[1]
+                );
             }
-            System.out.println("Succeeded to remove vault with name: " + arguments[1]);
-            return true;
+            return Triple.of(
+                    FlowInstruction.TERMINATE,
+                    EvaluationResult.SUCCESS,
+                    "Succeeded to remove vault with name: " + arguments[1]
+            );
         }
-        System.out.println("No command found with name: " + arguments[0]);
-        return true;
+        return Triple.of(
+                FlowInstruction.TERMINATE,
+                EvaluationResult.FAILURE,
+                "No command found with name: " + arguments[0]
+        );
     }
 
-    private static boolean checkGenericInteractiveCommands(VaultManager vaultManager, String[] arguments) {
+    private static Triple<LoopInstruction, EvaluationResult, String> checkGenericInteractiveCommands(VaultManager vaultManager, String[] arguments) {
         Optional<CredentialManager> credentialManager = vaultManager.getManager();
         if (credentialManager.isEmpty()) {
-            System.out.println("No current authenticated vault was found");
-            return true;
+            return Triple.of(
+                    LoopInstruction.EXIT,
+                    EvaluationResult.FAILURE,
+                    "No current authenticated vault was found"
+            );
         }
         if (GenericInteractiveCommandType.CURRENT_VAULT.is(arguments[0])) {
-            System.out.println("Current vault: " + credentialManager.get().getVault().getName());
-            return false;
+            return Triple.of(
+                    LoopInstruction.SKIP,
+                    EvaluationResult.SUCCESS,
+                    "Current vault: " + credentialManager.get().getVault().getName()
+            );
         }
         if (GenericInteractiveCommandType.GENERATE_PASSWORD.is(arguments[0])) {
             int length = Integer.parseInt(arguments[1]);
-            System.out.println("Generated password: " + credentialManager.get().generatePassword(length));
-            return false;
+            return Triple.of(
+                    LoopInstruction.SKIP,
+                    EvaluationResult.SUCCESS,
+                    "Generated password: " + credentialManager.get().generatePassword(length)
+            );
         }
-        if (GenericInteractiveCommandType.TEST_EXISTING.is(arguments[0])) {
+        if (GenericInteractiveCommandType.TEST_EXISTING_PASSWORD.is(arguments[0])) {
             Optional<Pair<PasswordStrength, String[]>> advices = credentialManager.get().testExistingPassword(arguments[1]);
-            if (advices.isPresent()) {
-                System.out.println("Advices: " + advices.get());
-            } else {
-                System.out.println("No password found with platform: " + arguments[1]);
+            if (advices.isEmpty()) {
+                return Triple.of(
+                        LoopInstruction.SKIP,
+                        EvaluationResult.FAILURE,
+                        "No password found with platform: " + arguments[1]
+                );
             }
-            return false;
+            return Triple.of(
+                    LoopInstruction.SKIP,
+                    EvaluationResult.SUCCESS,
+                    buildTable(
+                            CellSize.WRAP_SMALL,
+                            List.of("Strength"),
+                            List.of(List.of(advices.get().first().name()))
+                    ) + '\n' + buildTable(
+                            CellSize.WRAP_MEDIUM,
+                            List.of("Advice"),
+                            Stream.of(advices.get().second()).map(Collections::singletonList).toList()
+                    )
+            );
         }
-        if (GenericInteractiveCommandType.QUIT.is(arguments[0]) || GenericInteractiveCommandType.EXIT.is(arguments[0])) {
-            System.out.println("Closing the shell...");
-            return true;
+        if (GenericInteractiveCommandType.QUIT_SHELL.is(arguments[0]) || GenericInteractiveCommandType.EXIT_SHELL.is(arguments[0])) {
+            return Triple.of(
+                    LoopInstruction.EXIT,
+                    EvaluationResult.SUCCESS,
+                    "Closing the shell..."
+            );
         }
-        return false;
+        return Triple.of(
+                LoopInstruction.CONTINUE,
+                EvaluationResult.SUCCESS,
+                null
+        );
     }
 
-    // TODO: find a cleaner way to print tables in GET and GET_ALL
-    private static boolean checkCredentialCommands(VaultManager vaultManager, String[] arguments) {
+    private static Triple<LoopInstruction, EvaluationResult, String> checkCredentialCommands(VaultManager vaultManager, String[] arguments) {
         Optional<CredentialManager> credentialManager = vaultManager.getManager();
         if (credentialManager.isEmpty()) {
-            System.out.println("No current authenticated vault was found");
-            return true;
+            return Triple.of(
+                    LoopInstruction.EXIT,
+                    EvaluationResult.FAILURE,
+                    "No current authenticated vault was found"
+            );
         }
         if (CredentialCommandType.GET.is(arguments[0])) {
             Optional<Credential> credential = credentialManager.get().getCredential(arguments[1]);
             if (credential.isEmpty()) {
-                System.out.println("No credential found with platform: " + arguments[1]);
-                return false;
+                return Triple.of(
+                        LoopInstruction.SKIP,
+                        EvaluationResult.FAILURE,
+                        "No credential found with platform: " + arguments[1]
+                );
             }
             Optional<String> username = credential.get().getDecryptedUsername();
             Optional<String> password = credential.get().getDecryptedPassword();
             if (username.isEmpty() || password.isEmpty()) {
-                System.out.println("Failed to decrypt credential of platform: " + arguments[1]);
-                return false;
+                return Triple.of(
+                        LoopInstruction.SKIP,
+                        EvaluationResult.FAILURE,
+                        "Failed to decrypt credential of platform: " + arguments[1]
+                );
             }
-            TableBuilder builder = new TableBuilder(CellSize.WRAP_SMALL);
-            builder.addAttribute("Platform").addAttribute("Username").addAttribute("Password");
-            builder.addRecord(List.of(
-                    credential.get().getPlatform(),
-                    username.get(),
-                    password.get()
-            ));
-            Optional<String> table = builder.build();
-            if (table.isEmpty()) {
-                System.out.println("Failed to build table for platform: " + arguments[1]);
-                return false;
-            }
-            System.out.println(table.get());
-            builder.clear();
-            return false;
+            return Triple.of(
+                    LoopInstruction.SKIP,
+                    EvaluationResult.SUCCESS,
+                    buildTable(
+                            CellSize.WRAP_SMALL,
+                            List.of("Platform", "Username", "Password"),
+                            List.of(List.of(
+                                    credential.get().getPlatform(),
+                                    username.get(),
+                                    password.get()
+                            ))
+                    )
+            );
         }
         if (CredentialCommandType.GET_ALL.is(arguments[0])) {
             Optional<List<String>> credentials = credentialManager.get().getAllCredentials();
             if (credentials.isEmpty()) {
-                System.out.println("No credential found");
-                return false;
+                return Triple.of(
+                        LoopInstruction.SKIP,
+                        EvaluationResult.FAILURE,
+                        "No credential found"
+                );
             }
-            TableBuilder builder = new TableBuilder(CellSize.WRAP_SMALL);
-            builder.addAttribute("Platform");
-            for (String credential : credentials.get()) {
-                builder.addRecord(List.of(credential));
-            }
-            Optional<String> table = builder.build();
-            if (table.isEmpty()) {
-                System.out.println("Failed to build table");
-                return false;
-            }
-            System.out.println(table.get());
-            builder.clear();
-            return false;
+            return Triple.of(
+                    LoopInstruction.SKIP,
+                    EvaluationResult.SUCCESS,
+                    buildTable(
+                            CellSize.WRAP_SMALL,
+                            List.of("Platform"),
+                            credentials.get().stream().map(Collections::singletonList).toList()
+                    )
+            );
         }
         if (CredentialCommandType.SET.is(arguments[0])) {
             if (!credentialManager.get().setCredential(arguments[1], arguments[2], arguments[3])) {
-                System.out.println("Failed to set credential with platform: " + arguments[1]);
-                return false;
+                return Triple.of(
+                        LoopInstruction.SKIP,
+                        EvaluationResult.FAILURE,
+                        "Failed to set credential with platform: " + arguments[1]
+                );
             }
-            System.out.println("Succeeded to set credential with platform: " + arguments[1]);
-            return false;
+            return Triple.of(
+                    LoopInstruction.SKIP,
+                    EvaluationResult.SUCCESS,
+                    "Succeeded to set credential with platform: " + arguments[1]
+            );
         }
         if (CredentialCommandType.ADD.is(arguments[0])) {
             if (!credentialManager.get().addCredential(arguments[1], arguments[2], arguments[3])) {
-                System.out.println("Failed to add credential with platform: " + arguments[1]);
-                return false;
+                return Triple.of(
+                        LoopInstruction.SKIP,
+                        EvaluationResult.FAILURE,
+                        "Failed to add credential with platform: " + arguments[1]
+                );
             }
-            System.out.println("Succeeded to add credential with platform: " + arguments[1]);
-            return false;
+            return Triple.of(
+                    LoopInstruction.SKIP,
+                    EvaluationResult.SUCCESS,
+                    "Succeeded to add credential with platform: " + arguments[1]
+            );
         }
         if (CredentialCommandType.REMOVE.is(arguments[0])) {
             if (!credentialManager.get().removeCredential(arguments[1])) {
-                System.out.println("Failed to remove credential with platform: " + arguments[1]);
-                return false;
+                return Triple.of(
+                        LoopInstruction.SKIP,
+                        EvaluationResult.FAILURE,
+                        "Failed to remove credential with platform: " + arguments[1]
+                );
             }
-            System.out.println("Succeeded to remove credential with platform: " + arguments[1]);
-            return false;
+            return Triple.of(
+                    LoopInstruction.SKIP,
+                    EvaluationResult.SUCCESS,
+                    "Succeeded to remove credential with platform: " + arguments[1]
+            );
         }
         if (CredentialCommandType.REMOVE_ALL.is(arguments[0])) {
             if (!credentialManager.get().removeAllCredentials()) {
-                System.out.println("Failed to remove all credentials");
-                return false;
+                return Triple.of(
+                        LoopInstruction.SKIP,
+                        EvaluationResult.FAILURE,
+                        "Failed to remove all credentials"
+                );
             }
-            System.out.println("Succeeded to remove all credentials");
-            return false;
+            return Triple.of(
+                    LoopInstruction.SKIP,
+                    EvaluationResult.SUCCESS,
+                    "Succeeded to remove all credentials"
+            );
         }
-        return false;
+        return Triple.of(
+                LoopInstruction.CONTINUE,
+                EvaluationResult.SUCCESS,
+                null
+        );
+    }
+
+    private static String buildTable(CellSize cellSize, List<String> attributes, List<List<String>> records) {
+        try (TableBuilder builder = new TableBuilder(cellSize)) {
+            builder.addAttributes(attributes);
+            builder.addRecords(records);
+            return builder.build();
+        }
     }
 
 }

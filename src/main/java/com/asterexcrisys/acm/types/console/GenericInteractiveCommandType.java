@@ -22,21 +22,21 @@ public enum GenericInteractiveCommandType implements CommandType {
             new Class[]{Integer.class},
             new Validator[]{new IntegerNumberValidator()}
     ),
-    TEST_EXISTING(
+    TEST_EXISTING_PASSWORD(
             "-tep",
             "testExistingPassword",
             1,
             new Class[]{String.class},
             new Validator[]{new GenericValidator()}
     ),
-    QUIT(
+    QUIT_SHELL(
             "-qs",
             "quitShell",
             0,
             new Class[]{},
             new Validator[]{}
     ),
-    EXIT(
+    EXIT_SHELL(
             "-es",
             "exitShell",
             0,
@@ -82,8 +82,12 @@ public enum GenericInteractiveCommandType implements CommandType {
         return argumentValidators;
     }
 
+    public static boolean has(String command) {
+        return fromValue(command).isPresent();
+    }
+
     public static Optional<GenericInteractiveCommandType> fromValue(String value) {
-        if (value == null) {
+        if (value == null || value.isBlank()) {
             return Optional.empty();
         }
         for (GenericInteractiveCommandType type : GenericInteractiveCommandType.values()) {
