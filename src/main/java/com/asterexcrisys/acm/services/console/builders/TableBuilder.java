@@ -93,10 +93,12 @@ public class TableBuilder implements AutoCloseable {
         if (records == null || records.isEmpty()) {
             return this;
         }
-        if (records.stream().anyMatch(Objects::isNull)) {
+        if (records.stream().anyMatch((record) -> record == null || record.isEmpty())) {
             return this;
         }
-        this.records.addAll(records);
+        for (List<String> record : records) {
+            this.records.add(record);
+        }
         return this;
     }
 
