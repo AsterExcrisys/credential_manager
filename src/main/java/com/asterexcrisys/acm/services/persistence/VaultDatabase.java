@@ -22,6 +22,7 @@ import java.util.logging.Logger;
 public final class VaultDatabase implements Database {
 
     private static final Logger LOGGER = Logger.getLogger(VaultDatabase.class.getName());
+
     private final CoreDatabase database;
 
     public VaultDatabase(String masterKey) throws NullPointerException {

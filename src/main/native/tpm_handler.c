@@ -1,160 +1,160 @@
 #include <tss2/tss2_esys.h>
+#include <tss2/tss2_rc.h>
+#include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#define TPM2_SEAL_HANDLE ESYS_TR_RH_OWNER
+#define AUTHENTICATION_NULL {.size = 0, .buffer = {}}
+
 // TODO: gcc -fPIC -shared -o tpm_handler.so tpm_handler.c -ltss2-esys
 
-// TPM context
-ESYS_CONTEXT *esys_ctx;
-
-// Initialize TPM ESAPI context
-int initialize_tpm() {
-    TSS2_RC rc = Esys_Initialize(&esys_ctx, NULL, NULL);
-    return rc == TSS2_RC_SUCCESS ? 0 : -1;
+ESYS_CONTEXT* initialise_context() {
+    TSS2_RC response_code;
+    ESYS_CONTEXT* context = NULL;
+    response_code = Esys_Initialize(&context, NULL, NULL);
+    if (response_code != TSS2_RC_SUCCESS) {
+        return NULL;
+    }
+    return context;
 }
 
-// Finalize TPM context
-void finalize_tpm() {
-    if (esys_ctx) {
-        Esys_Finalize(&esys_ctx);
+void finalise_context(ESYS_CONTEXT* context) {
+    if (context != NULL) {
+        Esys_Finalize(&context);
     }
 }
 
-// Seal a key into TPM
-int seal_key(const uint8_t *keyData, size_t keyLen, TPM2B_PRIVATE **outPrivate, TPM2B_PUBLIC **outPublic) {
-    TSS2_RC rc;
-    ESYS_TR primaryHandle;
-
-    TPM2B_SENSITIVE_CREATE inSensitive = {
+bool seal_key_to_file(ESYS_CONTEXT* context, const uint8_t* key, size_t key_length, const char* file_name) {
+    TSS2_RC response_code;
+    TPM2B_SENSITIVE_CREATE input_sensitive = {
+        .size = 0,
         .sensitive = {
-            .userAuth = {.size = 0},
-            .data = {.size = keyLen}
+            .userAuth = AUTHENTICATION_NULL,
+            .data = {
+                .size = key_length,
+            }
         }
     };
-    memcpy(inSensitive.sensitive.data.buffer, keyData, keyLen);
-
-    TPM2B_PUBLIC inPublic = {
+    memcpy(input_sensitive.sensitive.data.buffer, key, key_length);
+    TPM2B_PUBLIC input_public = {
+        .size = 0,
         .publicArea = {
             .type = TPM2_ALG_KEYEDHASH,
             .nameAlg = TPM2_ALG_SHA256,
-            .objectAttributes = (TPMA_OBJECT_USERWITHAUTH | TPMA_OBJECT_FIXEDTPM |
-                                 TPMA_OBJECT_FIXEDPARENT | TPMA_OBJECT_SENSITIVEDATAORIGIN),
-            .authPolicy = {.size = 0},
+            .objectAttributes =
+                TPMA_OBJECT_USERWITHAUTH |
+                TPMA_OBJECT_FIXEDTPM |
+                TPMA_OBJECT_FIXEDPARENT |
+                TPMA_OBJECT_SENSITIVEDATAORIGIN,
+            .authPolicy = {
+                .size = 0,
+            },
             .parameters.keyedHashDetail = {
-                .scheme = {.scheme = TPM2_ALG_NULL}
+                .scheme.scheme = TPM2_ALG_NULL,
             },
-            .unique.keyedHash = {.size = 0}
+            .unique.keyedHash.size = 0,
         }
     };
-
-    TPM2B_DATA outsideInfo = {.size = 0};
-    TPML_PCR_SELECTION creationPCR = {.count = 0};
-
-    TPM2B_CREATION_DATA *creationData;
-    TPM2B_DIGEST *creationHash;
-    TPMT_TK_CREATION *creationTicket;
-    TPM2B_PUBLIC *primaryPub;
-
-    TPM2B_PUBLIC primaryTemplate = {
-        .publicArea = {
-            .type = TPM2_ALG_RSA,
-            .nameAlg = TPM2_ALG_SHA256,
-            .objectAttributes = (TPMA_OBJECT_RESTRICTED | TPMA_OBJECT_DECRYPT |
-                                 TPMA_OBJECT_FIXEDTPM | TPMA_OBJECT_FIXEDPARENT |
-                                 TPMA_OBJECT_SENSITIVEDATAORIGIN | TPMA_OBJECT_USERWITHAUTH),
-            .parameters.rsaDetail = {
-                .symmetric = {.algorithm = TPM2_ALG_AES, .keyBits.aes = 128, .mode.aes = TPM2_ALG_CFB},
-                .scheme = {.scheme = TPM2_ALG_NULL},
-                .keyBits = 2048,
-                .exponent = 0
-            },
-            .unique.rsa = {.size = 0}
-        }
-    };
-
-    TPM2B_SENSITIVE_CREATE emptySensitive = {.sensitive = {.userAuth = {.size = 0}, .data = {.size = 0}}};
-
-    rc = Esys_CreatePrimary(esys_ctx, ESYS_TR_RH_OWNER,
-                            ESYS_TR_PASSWORD, ESYS_TR_NONE, ESYS_TR_NONE,
-                            &emptySensitive, &primaryTemplate,
-                            &outsideInfo, &creationPCR,
-                            &primaryHandle, &primaryPub,
-                            &creationData, &creationHash, &creationTicket);
-    if (rc != TSS2_RC_SUCCESS) return -1;
-
-    TPM2B_PRIVATE *createdPrivate;
-    TPM2B_PUBLIC *createdPublic;
-
-    rc = Esys_Create(esys_ctx, primaryHandle,
-                     ESYS_TR_PASSWORD, ESYS_TR_NONE, ESYS_TR_NONE,
-                     &inSensitive, &inPublic, &outsideInfo, &creationPCR,
-                     &createdPrivate, &createdPublic,
-                     &creationData, &creationHash, &creationTicket);
-    if (rc != TSS2_RC_SUCCESS) return -2;
-
-    *outPrivate = createdPrivate;
-    *outPublic = createdPublic;
-
-    Esys_FlushContext(esys_ctx, primaryHandle);
-    return 0;
+    ESYS_TR object_handle = ESYS_TR_NONE;
+    TPM2B_PRIVATE* output_private = NULL;
+    TPM2B_PUBLIC* output_public = NULL;
+    response_code = Esys_Create(
+        context,
+        TPM2_SEAL_HANDLE,
+        ESYS_TR_PASSWORD,
+        ESYS_TR_NONE,
+        ESYS_TR_NONE,
+        &input_sensitive,
+        &input_public,
+        NULL, NULL, NULL,
+        &output_private,
+        &output_public,
+        NULL, NULL, NULL
+    );
+    if (response_code != TSS2_RC_SUCCESS) {
+        return false;
+    }
+    FILE* file = fopen(file_name, "wb");
+    if (file == NULL) {
+        Esys_Free(output_private);
+        Esys_Free(output_public);
+        return false;
+    }
+    fwrite(&output_private->size, sizeof(UINT16), 1, file);
+    fwrite(output_private->buffer, 1, output_private->size, file);
+    fwrite(&output_public->size, sizeof(UINT16), 1, file);
+    fwrite(output_public->publicArea.unique.keyedHash.buffer, 1, output_public->publicArea.unique.keyedHash.size, file);
+    fclose(file);
+    Esys_Free(output_private);
+    Esys_Free(output_public);
+    return true;
 }
 
-// Unseal key from TPM
-int unseal_key(const TPM2B_PRIVATE *sealedPrivate, const TPM2B_PUBLIC *sealedPublic, uint8_t *outKeyData, size_t *outLen) {
-    TSS2_RC rc;
-    ESYS_TR primaryHandle;
-    ESYS_TR sealedHandle;
-
-    TPM2B_DATA outsideInfo = {.size = 0};
-    TPML_PCR_SELECTION creationPCR = {.count = 0};
-    TPM2B_CREATION_DATA *creationData;
-    TPM2B_DIGEST *creationHash;
-    TPMT_TK_CREATION *creationTicket;
-    TPM2B_PUBLIC *primaryPub;
-
-    TPM2B_PUBLIC primaryTemplate = {
+uint8_t* unseal_key_from_file(ESYS_CONTEXT* context, const char* file_name, size_t* key_length) {
+    FILE* file = fopen(file_name, "rb");
+    if (file == NULL) {
+        return NULL;
+    }
+    TPM2B_PRIVATE input_private = {0};
+    TPM2B_PUBLIC input_public = {
         .publicArea = {
-            .type = TPM2_ALG_RSA,
+            .type = TPM2_ALG_KEYEDHASH,
             .nameAlg = TPM2_ALG_SHA256,
-            .objectAttributes = (TPMA_OBJECT_RESTRICTED | TPMA_OBJECT_DECRYPT |
-                                 TPMA_OBJECT_FIXEDTPM | TPMA_OBJECT_FIXEDPARENT |
-                                 TPMA_OBJECT_SENSITIVEDATAORIGIN | TPMA_OBJECT_USERWITHAUTH),
-            .parameters.rsaDetail = {
-                .symmetric = {.algorithm = TPM2_ALG_AES, .keyBits.aes = 128, .mode.aes = TPM2_ALG_CFB},
-                .scheme = {.scheme = TPM2_ALG_NULL},
-                .keyBits = 2048,
-                .exponent = 0
+            .objectAttributes =
+                TPMA_OBJECT_USERWITHAUTH |
+                TPMA_OBJECT_FIXEDTPM |
+                TPMA_OBJECT_FIXEDPARENT |
+                TPMA_OBJECT_SENSITIVEDATAORIGIN,
+            .authPolicy = {
+                .size = 0,
             },
-            .unique.rsa = {.size = 0}
+            .parameters.keyedHashDetail = {
+                .scheme.scheme = TPM2_ALG_NULL,
+            },
+            .unique.keyedHash.size = 32,
         }
     };
-
-    TPM2B_SENSITIVE_CREATE emptySensitive = {.sensitive = {.userAuth = {.size = 0}, .data = {.size = 0}}};
-
-    rc = Esys_CreatePrimary(esys_ctx, ESYS_TR_RH_OWNER,
-                            ESYS_TR_PASSWORD, ESYS_TR_NONE, ESYS_TR_NONE,
-                            &emptySensitive, &primaryTemplate,
-                            &outsideInfo, &creationPCR,
-                            &primaryHandle, &primaryPub,
-                            &creationData, &creationHash, &creationTicket);
-    if (rc != TSS2_RC_SUCCESS) return -1;
-
-    rc = Esys_Load(esys_ctx, primaryHandle,
-                   ESYS_TR_PASSWORD, ESYS_TR_NONE, ESYS_TR_NONE,
-                   sealedPrivate, sealedPublic, &sealedHandle);
-    if (rc != TSS2_RC_SUCCESS) return -2;
-
-    TPM2B_SENSITIVE_DATA *unsealed;
-    rc = Esys_Unseal(esys_ctx, sealedHandle,
-                     ESYS_TR_PASSWORD, ESYS_TR_NONE, ESYS_TR_NONE,
-                     &unsealed);
-    if (rc != TSS2_RC_SUCCESS) return -3;
-
-    memcpy(outKeyData, unsealed->buffer, unsealed->size);
-    *outLen = unsealed->size;
-
-    Esys_FlushContext(esys_ctx, sealedHandle);
-    Esys_FlushContext(esys_ctx, primaryHandle);
-    return 0;
+    fread(&input_private.size, sizeof(UINT16), 1, file);
+    fread(input_private.buffer, 1, input_private.size, file);
+    UINT16 public_size;
+    fread(&public_size, sizeof(UINT16), 1, file);
+    fread(input_public.publicArea.unique.keyedHash.buffer, 1, public_size, file);
+    input_public.publicArea.unique.keyedHash.size = public_size;
+    fclose(file);
+    ESYS_TR loaded_object = ESYS_TR_NONE;
+    TSS2_RC response_code = Esys_Load(
+        context,
+        TPM2_SEAL_HANDLE,
+        ESYS_TR_PASSWORD,
+        ESYS_TR_NONE,
+        ESYS_TR_NONE,
+        &input_private,
+        &input_public,
+        &loaded_object
+    );
+    if (response_code != TSS2_RC_SUCCESS) {
+        return NULL;
+    }
+    TPM2B_SENSITIVE_DATA* output_sensitive;
+    response_code = Esys_Unseal(
+        context,
+        loaded_object,
+        ESYS_TR_PASSWORD,
+        ESYS_TR_NONE,
+        ESYS_TR_NONE,
+        &output_sensitive
+    );
+    if (response_code != TSS2_RC_SUCCESS) {
+        Esys_FlushContext(context, loaded_object);
+        return NULL;
+    }
+    uint8_t* key = malloc(output_sensitive->size);
+    memcpy(key, output_sensitive->buffer, output_sensitive->size);
+    *key_length = output_sensitive->size;
+    Esys_FlushContext(context, loaded_object);
+    Esys_Free(output_sensitive);
+    return key;
 }

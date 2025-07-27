@@ -19,6 +19,7 @@ import java.util.logging.Logger;
 public final class CredentialDatabase implements Database {
 
     private static final Logger LOGGER = Logger.getLogger(CredentialDatabase.class.getName());
+
     private final CoreDatabase database;
 
     public CredentialDatabase(String vaultName, String masterKey) throws NullPointerException {

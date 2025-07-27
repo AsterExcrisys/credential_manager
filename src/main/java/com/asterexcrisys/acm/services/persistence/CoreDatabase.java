@@ -14,6 +14,7 @@ import java.util.logging.Logger;
 public final class CoreDatabase implements Database {
 
     private static final Logger LOGGER = Logger.getLogger(CoreDatabase.class.getName());
+
     private final Path databasePath;
     private final String masterKey;
     private Connection connection;

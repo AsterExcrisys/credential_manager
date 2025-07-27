@@ -22,6 +22,7 @@ import java.util.logging.Logger;
 public class CredentialManager implements AutoCloseable {
 
     private static final Logger LOGGER = Logger.getLogger(CredentialManager.class.getName());
+
     private final Vault vault;
     private final CredentialDatabase database;
     private final PasswordGenerator generator;
@@ -137,6 +138,7 @@ public class CredentialManager implements AutoCloseable {
         return Optional.of(Pair.of(passwordTester.getStrengthGrade(), passwordTester.getSafetyAdvices()));
     }
 
+    @Override
     public void close() {
         database.close();
     }
