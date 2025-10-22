@@ -38,7 +38,7 @@ import static org.jline.keymap.KeyMap.ctrl;
 public class ShellApplication {
 
     private static final Logger LOGGER = Logger.getLogger(ShellApplication.class.getName());
-    private static final boolean DEBUG = false;
+    private static final boolean DEBUG = GlobalUtility.isDebugEnabled();
 
     public static void main(String[] programArguments) {
         LineReader reader;

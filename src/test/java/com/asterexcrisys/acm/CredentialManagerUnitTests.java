@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SuppressWarnings("unused")
-public class CredentialManagerTest {
+public class CredentialManagerUnitTests {
 
     private static Vault vault;
     private CredentialManager manager;

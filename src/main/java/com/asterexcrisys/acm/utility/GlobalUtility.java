@@ -12,6 +12,10 @@ public final class GlobalUtility {
         // This class should not be instantiable
     }
 
+    public static boolean isDebugEnabled() {
+        return System.getProperty(GlobalConstants.DEBUG_PROPERTY, Boolean.FALSE.toString()).equalsIgnoreCase(Boolean.TRUE.toString());
+    }
+
     public static String getCurrentDate() {
         LocalDateTime now = LocalDateTime.now();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern(GlobalConstants.DATE_FORMAT);

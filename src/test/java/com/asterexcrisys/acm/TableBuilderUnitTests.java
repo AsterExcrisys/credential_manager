@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 @SuppressWarnings("unused")
-public class TableBuilderTest {
+public class TableBuilderUnitTests {
 
     private TableBuilder builder = new TableBuilder();
 

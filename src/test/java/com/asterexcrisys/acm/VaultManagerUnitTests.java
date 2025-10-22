@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SuppressWarnings("unused")
-public class VaultManagerTest {
+public class VaultManagerUnitTests {
 
     private VaultManager manager;
 
