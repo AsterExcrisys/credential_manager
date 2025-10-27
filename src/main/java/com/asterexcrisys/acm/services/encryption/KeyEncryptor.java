@@ -3,11 +3,11 @@ package com.asterexcrisys.acm.services.encryption;
 import com.asterexcrisys.acm.constants.EncryptionConstants;
 import com.asterexcrisys.acm.constants.HashingConstants;
 import com.asterexcrisys.acm.exceptions.DerivationException;
+import com.asterexcrisys.acm.utility.HashingUtility;
 import javax.crypto.*;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Base64;
 import java.util.Objects;
@@ -22,8 +22,7 @@ public final class KeyEncryptor implements Encryptor {
     private final CoreEncryptor encryptor;
 
     public KeyEncryptor(String password) throws NullPointerException, DerivationException, NoSuchAlgorithmException {
-        salt = new byte[HashingConstants.SALT_SIZE];
-        SecureRandom.getInstanceStrong().nextBytes(salt);
+        salt = HashingUtility.generateSalt().orElseThrow(NoSuchAlgorithmException::new);
         encryptor = new CoreEncryptor(deriveKey(Objects.requireNonNull(password), salt).orElseThrow(DerivationException::new));
     }
 

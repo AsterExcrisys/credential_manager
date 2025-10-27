@@ -1,12 +1,15 @@
 package com.asterexcrisys.acm.utility;
 
-import java.io.File;
+import com.asterexcrisys.acm.services.utility.DeletePathVisitor;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Objects;
+import java.util.logging.Logger;
 
 @SuppressWarnings("unused")
 public final class PathUtility {
+
+    private static final Logger LOGGER = Logger.getLogger(PathUtility.class.getName());
 
     private PathUtility() {
         // This class should not be instantiable
@@ -16,18 +19,23 @@ public final class PathUtility {
         if (path == null) {
             return false;
         }
-        if (Files.exists(path) && Files.isDirectory(path)) {
-            for (File file : Objects.requireNonNull(path.toFile().listFiles())) {
-                if (!deleteRecursively(file.toPath())) {
-                    return false;
-                }
+        if (!Files.exists(path)) {
+            return false;
+        }
+        try {
+            if (Files.isRegularFile(path)) {
+                Files.delete(path);
+                return true;
             }
-            return path.toFile().delete();
+            if (Files.isDirectory(path)) {
+                Files.walkFileTree(path, new DeletePathVisitor());
+                return true;
+            }
+            return false;
+        } catch (IOException e) {
+            LOGGER.warning("Error recursively deleting path: " + e.getMessage());
+            return false;
         }
-        if (Files.exists(path) && Files.isRegularFile(path)) {
-            return path.toFile().delete();
-        }
-        return false;
     }
 
     public static boolean isFileInDirectory(Path directory, Path file) {

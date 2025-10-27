@@ -4,6 +4,7 @@ import com.asterexcrisys.acm.exceptions.DatabaseException;
 import com.asterexcrisys.acm.exceptions.DerivationException;
 import com.asterexcrisys.acm.exceptions.HashingException;
 import com.asterexcrisys.acm.services.authentication.Authentication;
+import com.asterexcrisys.acm.services.authentication.filters.VerificationDatabaseFilter;
 import com.asterexcrisys.acm.utility.DatabaseUtility;
 import com.asterexcrisys.acm.utility.EncryptionUtility;
 import com.asterexcrisys.acm.services.persistence.VaultDatabase;
@@ -57,7 +58,7 @@ public class VaultManager implements AutoCloseable {
             return false;
         }
         try {
-            Optional<Vault> vault = Authentication.authenticate(database, name, password);
+            Optional<Vault> vault = Authentication.authenticate(database, name, password, new VerificationDatabaseFilter(name));
             if (vault.isEmpty()) {
                 return false;
             }

@@ -42,7 +42,7 @@ public final class VaultDatabase implements Database {
 
     public boolean createTable() {
         return database.executeUpdate(
-                "CREATE TABLE IF NOT EXISTS vaults (name TEXT PRIMARY KEY, password TEXT, salt TEXT);"
+                "CREATE TABLE IF NOT EXISTS vaults (name TEXT PRIMARY KEY, password TEXT NOT NULL, salt TEXT NOT NULL, isLocked TEXT NOT NULL DEFAULT 'false' COLLATE NOCASE);"
         ) == 0;
     }
 
@@ -51,6 +51,9 @@ public final class VaultDatabase implements Database {
     }
 
     public boolean backupTo(Path backupFile) {
+        if (backupFile == null) {
+            return false;
+        }
         Optional<Path> databaseFile = database.getDatabasePath();
         if (databaseFile.isEmpty()) {
             return false;
@@ -59,6 +62,9 @@ public final class VaultDatabase implements Database {
     }
 
     public boolean restoreFrom(Path backupFile) {
+        if (backupFile == null) {
+            return false;
+        }
         Optional<Path> databaseFile = database.getDatabasePath();
         if (databaseFile.isEmpty()) {
             return false;
@@ -67,13 +73,13 @@ public final class VaultDatabase implements Database {
     }
 
     public boolean mergeFrom(Path file, String masterKey) {
+        if (file == null || masterKey == null || masterKey.isBlank()) {
+            return false;
+        }
         if (PathUtility.isFileInDirectory(Paths.get("./data/"), file)) {
             return false;
         }
         if (!Files.isReadable(file)) {
-            return false;
-        }
-        if (masterKey == null || masterKey.isBlank()) {
             return false;
         }
         return database.executeUpdate("ATTACH ? AS file KEY ?;", file.toAbsolutePath().toString(), masterKey) == 0
@@ -81,8 +87,24 @@ public final class VaultDatabase implements Database {
                 && database.executeUpdate("DETACH file;") == 0;
     }
 
+    public boolean hasVault(String name, boolean isLocked) {
+        if (name == null || name.isBlank()) {
+            return false;
+        }
+        try (ResultSet resultSet = database.executeQuery(
+                "SELECT v.name FROM vaults AS v WHERE v.name = ? AND v.isLocked = ?;",
+                name,
+                isLocked? Boolean.TRUE.toString():Boolean.FALSE.toString()
+        )) {
+            return resultSet != null && resultSet.next();
+        } catch (SQLException e) {
+            LOGGER.warning("Error retrieving vault: " + e.getMessage());
+            return false;
+        }
+    }
+
     public Optional<Vault> getVault(String name, String password) {
-        if (name == null) {
+        if (name == null || password == null || name.isBlank() || password.isBlank()) {
             return Optional.empty();
         }
         try (ResultSet resultSet = database.executeQuery(
@@ -99,7 +121,8 @@ public final class VaultDatabase implements Database {
                     resultSet.getString("salt"),
                     resultSet.getString("password"),
                     resultSet.getString("name"),
-                    password
+                    password,
+                    resultSet.getString("isLocked").equalsIgnoreCase(Boolean.TRUE.toString())
             ));
         } catch (SQLException | NoSuchAlgorithmException | DerivationException | HashingException e) {
             LOGGER.warning("Error retrieving vault: " + e.getMessage());
@@ -127,10 +150,11 @@ public final class VaultDatabase implements Database {
             return false;
         }
         return database.executeUpdate(
-                "INSERT OR REPLACE INTO vaults (name, password, salt) VALUES (?, ?, ?);",
+                "INSERT OR REPLACE INTO vaults (name, password, salt, isLocked) VALUES (?, ?, ?, ?);",
                 vault.getName(),
                 vault.getHashedPassword(),
-                vault.getEncryptor().getSealedSalt()
+                vault.getEncryptor().getSealedSalt(),
+                vault.isLocked()? Boolean.TRUE.toString():Boolean.FALSE.toString()
         ) == 1;
     }
 

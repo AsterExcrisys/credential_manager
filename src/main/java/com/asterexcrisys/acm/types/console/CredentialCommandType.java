@@ -10,43 +10,45 @@ public enum CredentialCommandType implements CommandType {
 
     GET(
             "-gc",
-            "getCredential", 1,
-            new Class[]{String.class},
-            new Validator[]{new GenericValidator()}
+            "--get-credential",
+            1,
+            new Class[] {String.class},
+            new Validator[] {new GenericValidator()}
     ),
     GET_ALL(
             "-gac",
-            "getAllCredentials", 0,
-            new Class[]{},
-            new Validator[]{}
+            "--get-all-credentials",
+            0,
+            new Class[] {},
+            new Validator[] {}
     ),
     SET(
             "-sc",
-            "setCredential",
+            "--set-credential",
             3,
-            new Class[]{String.class, String.class, String.class},
-            new Validator[]{new GenericValidator(), new GenericValidator(), new PasswordValidator()}
+            new Class[] {String.class, String.class, String.class},
+            new Validator[] {new GenericValidator(), new GenericValidator(), new PasswordValidator()}
     ),
     ADD(
             "-ac",
-            "addCredential",
+            "--add-credential",
             3,
-            new Class[]{String.class, String.class, String.class},
-            new Validator[]{new GenericValidator(), new GenericValidator(), new PasswordValidator()}
+            new Class[] {String.class, String.class, String.class},
+            new Validator[] {new GenericValidator(), new GenericValidator(), new PasswordValidator()}
     ),
     REMOVE(
             "-rc",
-            "removeCredential",
+            "--remove-credential",
             1,
-            new Class[]{String.class},
-            new Validator[]{new GenericValidator()}
+            new Class[] {String.class},
+            new Validator[] {new GenericValidator()}
     ),
     REMOVE_ALL(
             "-rac",
-            "removeAllCredentials",
+            "--remove-all-credentials",
             0,
-            new Class[]{},
-            new Validator[]{}
+            new Class[] {},
+            new Validator[] {}
     );
 
     private final String shortName;

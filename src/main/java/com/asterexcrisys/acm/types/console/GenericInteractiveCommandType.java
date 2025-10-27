@@ -10,38 +10,38 @@ public enum GenericInteractiveCommandType implements CommandType {
 
     CURRENT_VAULT(
             "-cv",
-            "currentVault",
+            "--current-vault",
             0,
-            new Class[]{},
-            new Validator[]{}
+            new Class[] {},
+            new Validator[] {}
     ),
     GENERATE_PASSWORD(
             "-gp",
-            "generatePassword",
+            "--generate-password",
             1,
-            new Class[]{Integer.class},
-            new Validator[]{new IntegerNumberValidator()}
+            new Class[] {Integer.class},
+            new Validator[] {new IntegerNumberValidator()}
     ),
     TEST_EXISTING_PASSWORD(
             "-tep",
-            "testExistingPassword",
+            "--test-existing-password",
             1,
-            new Class[]{String.class},
-            new Validator[]{new GenericValidator()}
+            new Class[] {String.class},
+            new Validator[] {new GenericValidator()}
     ),
     QUIT_SHELL(
             "-qs",
-            "quitShell",
+            "--quit-shell",
             0,
-            new Class[]{},
-            new Validator[]{}
+            new Class[] {},
+            new Validator[] {}
     ),
     EXIT_SHELL(
             "-es",
-            "exitShell",
+            "--exit-shell",
             0,
-            new Class[]{},
-            new Validator[]{}
+            new Class[] {},
+            new Validator[] {}
     );
 
     private final String shortName;

@@ -2,14 +2,15 @@ import com.asterexcrisys.acm.CredentialManager;
 import com.asterexcrisys.acm.VaultManager;
 import com.asterexcrisys.acm.constants.GlobalConstants;
 import com.asterexcrisys.acm.constants.HashingConstants;
-import com.asterexcrisys.acm.services.console.builders.TableBuilder;
+import com.asterexcrisys.acm.services.console.TableBuilder;
 import com.asterexcrisys.acm.types.utility.*;
 import com.asterexcrisys.acm.utility.EncryptionUtility;
 import com.asterexcrisys.acm.utility.GlobalUtility;
-import com.asterexcrisys.acm.services.console.handlers.ShellSignalHandler;
-import com.asterexcrisys.acm.services.console.parsers.ShellArgumentParser;
+import com.asterexcrisys.acm.services.console.ShellSignalHandler;
+import com.asterexcrisys.acm.services.console.ShellArgumentParser;
 import com.asterexcrisys.acm.types.console.*;
 import com.asterexcrisys.acm.types.encryption.Credential;
+import com.asterexcrisys.acm.utility.PathUtility;
 import org.jline.keymap.KeyMap;
 import org.jline.reader.Binding;
 import org.jline.reader.LineReader;
@@ -50,11 +51,11 @@ public class ShellApplication {
             switch (validateArguments(programArguments, ShellType.NON_INTERACTIVE)) {
                 case Triplet(FlowInstruction instruction, EvaluationResult result, String message) when instruction == FlowInstruction.TERMINATE -> {
                     LOGGER.log(result.level(), message);
-                    println(result.level(), message);
+                    printMessage(result.level(), message);
                     return;
                 }
                 case Triplet(FlowInstruction instruction, EvaluationResult result, String message) when message != null -> {
-                    println(result.level(), message);
+                    printMessage(result.level(), message);
                 }
                 default -> {
                     // No operation needed
@@ -62,7 +63,7 @@ public class ShellApplication {
             }
         } catch (Exception e) {
             LOGGER.severe("Error starting up application: " + e.getMessage());
-            println(Level.SEVERE, "An error occurred during the application startup");
+            printMessage(Level.SEVERE, "An error occurred during the application startup");
             System.exit(1);
             return;
         }
@@ -77,11 +78,11 @@ public class ShellApplication {
             switch (checkGenericNonInteractiveCommands(manager, programArguments)) {
                 case Triplet(FlowInstruction instruction, EvaluationResult result, String message) when instruction == FlowInstruction.TERMINATE -> {
                     LOGGER.log(result.level(), message);
-                    println(result.level(), message);
+                    printMessage(result.level(), message);
                     return;
                 }
                 case Triplet(FlowInstruction instruction, EvaluationResult result, String message) when message != null -> {
-                    println(result.level(), message);
+                    printMessage(result.level(), message);
                 }
                 default -> {
                     // No operation needed
@@ -90,11 +91,11 @@ public class ShellApplication {
             switch (checkVaultCommands(manager, programArguments)) {
                 case Triplet(FlowInstruction instruction, EvaluationResult result, String message) when instruction == FlowInstruction.TERMINATE -> {
                     LOGGER.log(result.level(), message);
-                    println(result.level(), message);
+                    printMessage(result.level(), message);
                     return;
                 }
                 case Triplet(FlowInstruction instruction, EvaluationResult result, String message) when message != null -> {
-                    println(result.level(), message);
+                    printMessage(result.level(), message);
                 }
                 default -> {
                     // No operation needed
@@ -105,11 +106,11 @@ public class ShellApplication {
                 switch (validateArguments(shellArguments, ShellType.INTERACTIVE)) {
                     case Triplet(FlowInstruction instruction, EvaluationResult result, String message) when instruction == FlowInstruction.TERMINATE -> {
                         LOGGER.log(result.level(), message);
-                        println(result.level(), message);
+                        printMessage(result.level(), message);
                         continue;
                     }
                     case Triplet(FlowInstruction instruction, EvaluationResult result, String message) when message != null -> {
-                        println(result.level(), message);
+                        printMessage(result.level(), message);
                     }
                     default -> {
                         // No operation needed
@@ -118,15 +119,15 @@ public class ShellApplication {
                 switch (checkGenericInteractiveCommands(manager, shellArguments)) {
                     case Triplet(LoopInstruction instruction, EvaluationResult result, String message) when instruction == LoopInstruction.EXIT -> {
                         LOGGER.log(result.level(), message);
-                        println(result.level(), message);
+                        printMessage(result.level(), message);
                         return;
                     }
                     case Triplet(LoopInstruction instruction, EvaluationResult result, String message) when instruction == LoopInstruction.SKIP -> {
-                        println(result.level(), message);
+                        printMessage(result.level(), message);
                         continue;
                     }
                     case Triplet(LoopInstruction instruction, EvaluationResult result, String message) when message != null -> {
-                        println(result.level(), message);
+                        printMessage(result.level(), message);
                     }
                     default -> {
                         // No operation needed
@@ -135,15 +136,15 @@ public class ShellApplication {
                 switch (checkCredentialCommands(manager, shellArguments)) {
                     case Triplet(LoopInstruction instruction, EvaluationResult result, String message) when instruction == LoopInstruction.EXIT -> {
                         LOGGER.log(result.level(), message);
-                        println(result.level(), message);
+                        printMessage(result.level(), message);
                         return;
                     }
                     case Triplet(LoopInstruction instruction, EvaluationResult result, String message) when instruction == LoopInstruction.SKIP -> {
-                        println(result.level(), message);
+                        printMessage(result.level(), message);
                         continue;
                     }
                     case Triplet(LoopInstruction instruction, EvaluationResult result, String message) when message != null -> {
-                        println(result.level(), message);
+                        printMessage(result.level(), message);
                     }
                     default -> {
                         // No operation needed
@@ -152,7 +153,7 @@ public class ShellApplication {
             }
         } catch (Exception e) {
             LOGGER.severe("Error executing application: " + e.getMessage());
-            println(Level.SEVERE, "An error occurred during the application execution");
+            printMessage(Level.SEVERE, "An error occurred during the application execution");
             System.exit(1);
         }
     }
@@ -165,14 +166,14 @@ public class ShellApplication {
         if (DEBUG) {
             ConsoleHandler consoleHandler = new ConsoleHandler();
             consoleHandler.setFormatter(new SimpleFormatter());
-            consoleHandler.setLevel(Level.ALL);
+            consoleHandler.setLevel(Level.INFO);
             logger.addHandler(consoleHandler);
         }
         FileHandler fileHandler = new FileHandler(
                 String.format("./data/logs/%s.log", GlobalUtility.getCurrentDate()),
                 true
         );
-        fileHandler.setLevel(Level.CONFIG);
+        fileHandler.setLevel(Level.WARNING);
         fileHandler.setFormatter(new SimpleFormatter());
         logger.addHandler(fileHandler);
     }
@@ -221,7 +222,7 @@ public class ShellApplication {
         return builder.build();
     }
 
-    public static void println(Level level, String message) {
+    public static void printMessage(Level level, String message) {
         if (level.intValue() >= Level.FINEST.intValue() && level.intValue() <= Level.INFO.intValue()) {
             System.out.println(message);
             System.out.flush();
@@ -268,6 +269,22 @@ public class ShellApplication {
                     FlowInstruction.TERMINATE,
                     EvaluationResult.SUCCESS,
                     "Succeeded to export vault with name: " + arguments[2]
+            );
+        }
+        if (GenericNonInteractiveCommandType.CLEAR_CONTEXT.is(arguments[0])) {
+            boolean isHistoryCleared = PathUtility.deleteRecursively(Paths.get("./data/console/"));
+            boolean isStatusCleared = PathUtility.deleteRecursively(Paths.get("./data/logs/"));
+            if (!isHistoryCleared || !isStatusCleared) {
+                return Triplet.of(
+                        FlowInstruction.TERMINATE,
+                        EvaluationResult.FAILURE,
+                        "Failed to clear context: application's history records and/or status logs may have not been completely cleared"
+                );
+            }
+            return Triplet.of(
+                    FlowInstruction.TERMINATE,
+                    EvaluationResult.SUCCESS,
+                    "Succeeded to clear context: application's history records and status logs have been cleared"
             );
         }
         if (GenericNonInteractiveCommandType.TEST_GIVEN_PASSWORD.is(arguments[0])) {

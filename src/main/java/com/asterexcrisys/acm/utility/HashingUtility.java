@@ -23,39 +23,54 @@ public final class HashingUtility {
         // This class should not be instantiable
     }
 
+    public static Optional<byte[]> generateSalt() {
+        return generateSalt(HashingConstants.SALT_SIZE);
+    }
+
+    public static Optional<byte[]> generateSalt(int length) {
+        if (length < 1) {
+            return Optional.empty();
+        }
+        try {
+            byte[] salt = new byte[length];
+            SecureRandom.getInstanceStrong().nextBytes(salt);
+            return Optional.of(salt);
+        } catch (NoSuchAlgorithmException e) {
+            LOGGER.warning("Error generating salt: " + e.getMessage());
+            return Optional.empty();
+        }
+    }
+
     public static Optional<String> hashPassword(String password) {
         if (password == null || password.isBlank()) {
             return Optional.empty();
         }
-        try {
-            byte[] salt = new byte[HashingConstants.SALT_SIZE];
-            SecureRandom.getInstanceStrong().nextBytes(salt);
-            Builder builder = new Builder(Argon2Parameters.ARGON2_id)
-                    .withVersion(Argon2Parameters.ARGON2_VERSION_13)
-                    .withIterations(HashingConstants.ITERATION_COUNT)
-                    .withMemoryAsKB(HashingConstants.MEMORY_USAGE)
-                    .withParallelism(HashingConstants.PARALLELISM_COUNT)
-                    .withSalt(salt);
-            Argon2Parameters parameters = builder.build();
-            byte[] hashedData = new byte[HashingConstants.HASH_SIZE];
-            Argon2BytesGenerator generator = new Argon2BytesGenerator();
-            generator.init(parameters);
-            generator.generateBytes(password.getBytes(StandardCharsets.UTF_8), hashedData, 0, hashedData.length);
-            Optional<byte[]> result = constructHash(
-                    salt,
-                    parameters.getVersion(),
-                    parameters.getIterations(),
-                    parameters.getMemory(),
-                    hashedData
-            );
-            if (result.isEmpty()) {
-                return Optional.empty();
-            }
-            return Optional.of(Base64.getEncoder().encodeToString(result.get()));
-        } catch (NoSuchAlgorithmException e) {
-            LOGGER.warning("Error hashing password: " + e.getMessage());
+        Optional<byte[]> salt = generateSalt();
+        if (salt.isEmpty()) {
             return Optional.empty();
         }
+        Builder builder = new Builder(Argon2Parameters.ARGON2_id)
+                .withVersion(Argon2Parameters.ARGON2_VERSION_13)
+                .withIterations(HashingConstants.ITERATION_COUNT)
+                .withMemoryAsKB(HashingConstants.MEMORY_USAGE)
+                .withParallelism(HashingConstants.PARALLELISM_COUNT)
+                .withSalt(salt.get());
+        Argon2Parameters parameters = builder.build();
+        byte[] hashedData = new byte[HashingConstants.HASH_SIZE];
+        Argon2BytesGenerator generator = new Argon2BytesGenerator();
+        generator.init(parameters);
+        generator.generateBytes(password.getBytes(StandardCharsets.UTF_8), hashedData, 0, hashedData.length);
+        Optional<byte[]> result = constructHash(
+                salt.get(),
+                parameters.getVersion(),
+                parameters.getIterations(),
+                parameters.getMemory(),
+                hashedData
+        );
+        if (result.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(Base64.getEncoder().encodeToString(result.get()));
     }
 
     public static boolean verifyPassword(String password, String hash) {

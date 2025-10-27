@@ -1,4 +1,4 @@
-package com.asterexcrisys.acm.services.console.handlers;
+package com.asterexcrisys.acm.services.console;
 
 import org.jline.terminal.Terminal.Signal;
 import org.jline.terminal.Terminal.SignalHandler;

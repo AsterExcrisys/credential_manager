@@ -39,7 +39,7 @@ public final class CredentialDatabase implements Database {
 
     public boolean createTable() {
         return database.executeUpdate(
-                "CREATE TABLE IF NOT EXISTS credentials (platform TEXT PRIMARY KEY, username TEXT, password TEXT, key TEXT);"
+                "CREATE TABLE IF NOT EXISTS credentials (platform TEXT PRIMARY KEY, username TEXT NOT NULL, password TEXT NOT NULL, key TEXT NOT NULL);"
         ) == 0;
     }
 
@@ -48,6 +48,9 @@ public final class CredentialDatabase implements Database {
     }
 
     public boolean backupTo(Path backupFile) {
+        if (backupFile == null) {
+            return false;
+        }
         Optional<Path> databaseFile = database.getDatabasePath();
         if (databaseFile.isEmpty()) {
             return false;
@@ -56,6 +59,9 @@ public final class CredentialDatabase implements Database {
     }
 
     public boolean restoreFrom(Path backupFile) {
+        if (backupFile == null) {
+            return false;
+        }
         Optional<Path> databaseFile = database.getDatabasePath();
         if (databaseFile.isEmpty()) {
             return false;
@@ -64,13 +70,13 @@ public final class CredentialDatabase implements Database {
     }
 
     public boolean mergeWith(Path file, String masterKey) {
+        if (file == null || masterKey == null || masterKey.isBlank()) {
+            return false;
+        }
         if (PathUtility.isFileInDirectory(Paths.get("./data/"), file)) {
             return false;
         }
         if (!Files.isReadable(file)) {
-            return false;
-        }
-        if (masterKey == null || masterKey.isBlank()) {
             return false;
         }
         return database.executeUpdate("ATTACH ? AS file KEY ?;", file.toAbsolutePath().toString(), masterKey) == 0
@@ -78,8 +84,23 @@ public final class CredentialDatabase implements Database {
                 && database.executeUpdate("DETACH file;") == 0;
     }
 
+    public boolean hasCredential(String platform) {
+        if (platform == null || platform.isBlank()) {
+            return false;
+        }
+        try (ResultSet resultSet = database.executeQuery(
+                "SELECT c.platform FROM credentials AS c WHERE c.platform = ?;",
+                platform
+        )) {
+            return resultSet !=null && resultSet.next();
+        } catch (SQLException e) {
+            LOGGER.warning("Error retrieving credential: " + e.getMessage());
+            return false;
+        }
+    }
+
     public Optional<Credential> getCredential(String platform, KeyEncryptor encryptor) {
-        if (platform == null || encryptor == null) {
+        if (platform == null || encryptor == null || platform.isBlank()) {
             return Optional.empty();
         }
         try (ResultSet resultSet = database.executeQuery(

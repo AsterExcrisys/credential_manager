@@ -11,24 +11,31 @@ public enum GenericNonInteractiveCommandType implements CommandType {
 
     IMPORT_VAULT(
             "-iv",
-            "importVault",
+            "--import-vault",
             3,
-            new Class[]{String.class, String.class, String.class},
-            new Validator[]{new PathValidator(), new GenericValidator(), new PasswordValidator()}
+            new Class[] {String.class, String.class, String.class},
+            new Validator[] {new PathValidator(), new GenericValidator(), new PasswordValidator()}
     ),
     EXPORT_VAULT(
             "-ev",
-            "exportVault",
+            "--export-vault",
             3,
-            new Class[]{String.class, String.class, String.class},
-            new Validator[]{new PathValidator(), new GenericValidator(), new PasswordValidator()}
+            new Class[] {String.class, String.class, String.class},
+            new Validator[] {new PathValidator(), new GenericValidator(), new PasswordValidator()}
+    ),
+    CLEAR_CONTEXT(
+            "-cc",
+            "--clear-context",
+            0,
+            new Class[] {},
+            new Validator[] {}
     ),
     TEST_GIVEN_PASSWORD(
             "-tgv",
-            "testGivenPassword",
+            "--test-given-password",
             1,
-            new Class[]{String.class},
-            new Validator[]{new PasswordValidator()}
+            new Class[] {String.class},
+            new Validator[] {new PasswordValidator()}
     );
 
     private final String shortName;

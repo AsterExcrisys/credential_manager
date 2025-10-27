@@ -1,4 +1,4 @@
-package com.asterexcrisys.acm.services.console.builders;
+package com.asterexcrisys.acm.services.console;
 
 import com.asterexcrisys.acm.constants.ConsoleConstants;
 import com.asterexcrisys.acm.types.console.CellSize;

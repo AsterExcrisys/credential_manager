@@ -1,6 +1,6 @@
 package com.asterexcrisys.acm;
 
-import com.asterexcrisys.acm.services.console.builders.TableBuilder;
+import com.asterexcrisys.acm.services.console.TableBuilder;
 import com.asterexcrisys.acm.types.console.CellSize;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;

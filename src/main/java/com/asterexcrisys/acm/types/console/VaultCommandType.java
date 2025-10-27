@@ -10,29 +10,31 @@ public enum VaultCommandType implements CommandType {
 
     GET(
             "-gv",
-            "getVault", 2,
-            new Class[]{String.class, String.class},
-            new Validator[]{new GenericValidator(), new PasswordValidator()}
+            "--get-vault",
+            2,
+            new Class[] {String.class, String.class},
+            new Validator[] {new GenericValidator(), new PasswordValidator()}
     ),
     GET_ALL(
             "-gav",
-            "getAllVaults", 0,
-            new Class[]{},
-            new Validator[]{}
+            "--get-all-vaults",
+            0,
+            new Class[] {},
+            new Validator[] {}
     ),
     ADD(
             "-av",
-            "addVault",
+            "--add-vault",
             2,
-            new Class[]{String.class, String.class},
-            new Validator[]{new GenericValidator(), new PasswordValidator()}
+            new Class[] {String.class, String.class},
+            new Validator[] {new GenericValidator(), new PasswordValidator()}
     ),
     REMOVE(
             "-rv",
-            "removeVault",
+            "--remove-vault",
             2,
-            new Class[]{String.class, String.class},
-            new Validator[]{new GenericValidator(), new PasswordValidator()}
+            new Class[] {String.class, String.class},
+            new Validator[] {new GenericValidator(), new PasswordValidator()}
     );
 
     private final String shortName;

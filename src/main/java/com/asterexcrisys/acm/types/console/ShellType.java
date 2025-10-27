@@ -8,7 +8,7 @@ import java.util.function.Function;
 public enum ShellType {
 
     NON_INTERACTIVE(ConsoleUtility.NonInteractiveShell::fromCommandName),
-    INTERACTIVE(ConsoleUtility.InteractiveShell::fromCommandName),;
+    INTERACTIVE(ConsoleUtility.InteractiveShell::fromCommandName);
 
     private final Function<String, Optional<? extends CommandType>> filter;
 
