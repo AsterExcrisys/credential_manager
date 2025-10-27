@@ -1,8 +1,11 @@
 package com.asterexcrisys.acm.utility;
 
 import com.asterexcrisys.acm.constants.GlobalConstants;
+import oshi.SystemInfo;
+import oshi.hardware.ComputerSystem;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Base64;
 import java.util.List;
 
 @SuppressWarnings("unused")
@@ -14,6 +17,12 @@ public final class GlobalUtility {
 
     public static boolean isDebugEnabled() {
         return System.getProperty(GlobalConstants.DEBUG_PROPERTY, Boolean.FALSE.toString()).equalsIgnoreCase(Boolean.TRUE.toString());
+    }
+
+    public static String getUniqueIdentifier() {
+        ComputerSystem computerSystem = (new SystemInfo()).getHardware().getComputerSystem();
+        String identifier = computerSystem.getSerialNumber().concat(computerSystem.getHardwareUUID());
+        return Base64.getEncoder().encodeToString(identifier.getBytes());
     }
 
     public static String getCurrentDate() {

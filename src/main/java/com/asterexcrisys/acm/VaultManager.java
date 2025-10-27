@@ -27,6 +27,7 @@ import java.util.logging.Logger;
 public class VaultManager implements AutoCloseable {
 
     private static final Logger LOGGER = Logger.getLogger(VaultManager.class.getName());
+
     private final VaultDatabase database;
     private CredentialManager manager;
 
@@ -80,7 +81,7 @@ public class VaultManager implements AutoCloseable {
     }
 
     public Optional<List<String>> getAllVaults() {
-        return database.getAllVaults();
+        return database.getAllVaults(false);
     }
 
     public boolean setVault(String name, String password) {
@@ -126,6 +127,24 @@ public class VaultManager implements AutoCloseable {
         }
         PathUtility.deleteRecursively(Paths.get(String.format("./data/%s/", name)));
         return true;
+    }
+
+    public boolean lockVault(String name, String password) {
+        Optional<Vault> vault = database.getVault(name, password);
+        if (vault.isEmpty()) {
+            return false;
+        }
+        vault.get().setLocked(true);
+        return database.saveVault(vault.get());
+    }
+
+    public boolean unlockVault(String name, String password) {
+        Optional<Vault> vault = database.getVault(name, password);
+        if (vault.isEmpty()) {
+            return false;
+        }
+        vault.get().setLocked(false);
+        return database.saveVault(vault.get());
     }
 
     public boolean importVault(Path file, String name, String password) {

@@ -77,15 +77,15 @@ public final class HashingUtility {
         if (password == null || hash == null || password.isBlank() || hash.isBlank()) {
             return false;
         }
-        Optional<Pair<Argon2Parameters, byte[]>> pair = deconstructHash(Base64.getDecoder().decode(hash));
-        if (pair.isEmpty()) {
+        Optional<Pair<Argon2Parameters, byte[]>> parameters = deconstructHash(Base64.getDecoder().decode(hash));
+        if (parameters.isEmpty()) {
             return false;
         }
         byte[] hashedData = new byte[HashingConstants.HASH_SIZE];
         Argon2BytesGenerator verifier = new Argon2BytesGenerator();
-        verifier.init(pair.get().first());
+        verifier.init(parameters.get().first());
         verifier.generateBytes(password.getBytes(StandardCharsets.UTF_8), hashedData, 0, hashedData.length);
-        return Arrays.areEqual(pair.get().second(), hashedData);
+        return Arrays.areEqual(parameters.get().second(), hashedData);
     }
 
     private static Optional<byte[]> constructHash(byte[] salt, int version, int iterationCount, int memoryUsage, byte[] hashedData) {

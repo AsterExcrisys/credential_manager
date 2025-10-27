@@ -19,6 +19,7 @@ import java.util.logging.Logger;
 public final class CoreEncryptor implements Encryptor {
 
     private static final Logger LOGGER = Logger.getLogger(CoreEncryptor.class.getName());
+
     private final SecretKey key;
 
     public CoreEncryptor(SecretKey key) throws NullPointerException {

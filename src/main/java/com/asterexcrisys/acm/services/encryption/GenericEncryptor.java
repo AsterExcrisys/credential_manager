@@ -14,6 +14,7 @@ import java.util.logging.Logger;
 public final class GenericEncryptor implements Encryptor {
 
     private static final Logger LOGGER = Logger.getLogger(GenericEncryptor.class.getName());
+
     private final CoreEncryptor encryptor;
 
     public GenericEncryptor() throws NullPointerException, EncryptionException {

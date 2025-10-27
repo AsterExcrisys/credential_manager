@@ -22,6 +22,7 @@ import java.util.logging.Logger;
 public final class VaultDatabase implements Database {
 
     private static final Logger LOGGER = Logger.getLogger(VaultDatabase.class.getName());
+
     private final CoreDatabase database;
 
     public VaultDatabase(String masterKey) throws NullPointerException {
@@ -108,7 +109,7 @@ public final class VaultDatabase implements Database {
             return Optional.empty();
         }
         try (ResultSet resultSet = database.executeQuery(
-                "SELECT v.name, v.password, v.salt FROM vaults AS v WHERE v.name = ?;",
+                "SELECT v.name, v.password, v.salt, v.isLocked FROM vaults AS v WHERE v.name = ?;",
                 name
         )) {
             if (resultSet == null || !resultSet.next()) {
@@ -130,9 +131,10 @@ public final class VaultDatabase implements Database {
         }
     }
 
-    public Optional<List<String>> getAllVaults() {
+    public Optional<List<String>> getAllVaults(boolean isLocked) {
         try (ResultSet resultSet = database.executeQuery(
-                "SELECT v.name FROM vaults AS v;"
+                "SELECT v.name FROM vaults AS v WHERE v.isLocked = ?;",
+                isLocked? Boolean.TRUE.toString():Boolean.FALSE.toString()
         )) {
             List<String> vaults = new ArrayList<>();
             while (resultSet != null && resultSet.next()) {

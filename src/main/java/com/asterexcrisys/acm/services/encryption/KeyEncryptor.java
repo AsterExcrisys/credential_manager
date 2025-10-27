@@ -18,6 +18,7 @@ import java.util.logging.Logger;
 public final class KeyEncryptor implements Encryptor {
 
     private static final Logger LOGGER = Logger.getLogger(KeyEncryptor.class.getName());
+
     private final byte[] salt;
     private final CoreEncryptor encryptor;
 
