@@ -1,9 +1,1 @@
-1761580714711:--add-credential google password
-1761580799849:--add-crendential google username password
-1761580824453:--add-credential google username password
-1761580837272:--get-credential google
-1761580842918:exit
-1761580846235:quit
-1761580858104:--exit
-1761580861409:--quit
-1761580879766:--quit-shell
+1761649044544:--exit-shell

@@ -30,6 +30,13 @@ public enum GenericNonInteractiveCommandType implements CommandType {
             new Class[] {},
             new Validator[] {}
     ),
+    WIPE_DATA(
+         "-wd",
+         "--wipe-data",
+         1,
+         new Class[] {String.class},
+         new Validator[] {new GenericValidator()}
+    ),
     TEST_GIVEN_PASSWORD(
             "-tgv",
             "--test-given-password",

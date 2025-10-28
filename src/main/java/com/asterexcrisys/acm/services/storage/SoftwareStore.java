@@ -28,7 +28,7 @@ public final class SoftwareStore implements Store<SecretKey> {
         storePath = Paths.get(String.format(
                 "./data/%s.%s",
                 Objects.requireNonNull(fileName),
-                Objects.requireNonNull(type).name().toLowerCase()
+                Objects.requireNonNull(type).getExtension()
         ));
         this.password = Objects.requireNonNull(password).toCharArray();
         store = KeyStore.getInstance(Objects.requireNonNull(type).name());

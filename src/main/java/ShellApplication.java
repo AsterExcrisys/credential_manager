@@ -76,26 +76,32 @@ public class ShellApplication {
                 ))
         )) {
             switch (checkGenericNonInteractiveCommands(manager, programArguments)) {
-                case Triplet(FlowInstruction instruction, EvaluationResult result, String message) when instruction == FlowInstruction.TERMINATE -> {
-                    LOGGER.log(result.level(), message);
-                    printMessage(result.level(), message);
+                case Triplet(FlowInstruction instruction, EvaluationResult result, Message message) when instruction == FlowInstruction.TERMINATE -> {
+                    if (!message.isSensitive()) {
+                        LOGGER.log(result.level(), message.content());
+                    }
+                    printMessage(result.level(), message.content());
                     return;
                 }
-                case Triplet(FlowInstruction instruction, EvaluationResult result, String message) when message != null -> {
-                    printMessage(result.level(), message);
+                case Triplet(FlowInstruction instruction, EvaluationResult result, Message message) when message.content() != null -> {
+                    printMessage(result.level(), message.content());
                 }
                 default -> {
                     // No operation needed
                 }
             }
             switch (checkVaultCommands(manager, programArguments)) {
-                case Triplet(FlowInstruction instruction, EvaluationResult result, String message) when instruction == FlowInstruction.TERMINATE -> {
-                    LOGGER.log(result.level(), message);
-                    printMessage(result.level(), message);
+                case Triplet(FlowInstruction instruction, EvaluationResult result, Message message) when instruction == FlowInstruction.TERMINATE -> {
+                    if (!message.isSensitive()) {
+                        LOGGER.log(result.level(), message.content());
+                    }
+                    reader.getHistory().purge();
+                    printMessage(result.level(), message.content());
                     return;
                 }
-                case Triplet(FlowInstruction instruction, EvaluationResult result, String message) when message != null -> {
-                    printMessage(result.level(), message);
+                case Triplet(FlowInstruction instruction, EvaluationResult result, Message message) when message.content() != null -> {
+                    reader.getHistory().purge();
+                    printMessage(result.level(), message.content());
                 }
                 default -> {
                     // No operation needed
@@ -117,34 +123,41 @@ public class ShellApplication {
                     }
                 }
                 switch (checkGenericInteractiveCommands(manager, shellArguments)) {
-                    case Triplet(LoopInstruction instruction, EvaluationResult result, String message) when instruction == LoopInstruction.EXIT -> {
-                        LOGGER.log(result.level(), message);
-                        printMessage(result.level(), message);
+                    case Triplet(LoopInstruction instruction, EvaluationResult result, Message message) when instruction == LoopInstruction.EXIT -> {
+                        if (!message.isSensitive()) {
+                            LOGGER.log(result.level(), message.content());
+                        }
+                        printMessage(result.level(), message.content());
                         return;
                     }
-                    case Triplet(LoopInstruction instruction, EvaluationResult result, String message) when instruction == LoopInstruction.SKIP -> {
-                        printMessage(result.level(), message);
+                    case Triplet(LoopInstruction instruction, EvaluationResult result, Message message) when instruction == LoopInstruction.SKIP -> {
+                        printMessage(result.level(), message.content());
                         continue;
                     }
-                    case Triplet(LoopInstruction instruction, EvaluationResult result, String message) when message != null -> {
-                        printMessage(result.level(), message);
+                    case Triplet(LoopInstruction instruction, EvaluationResult result, Message message) when message.content() != null -> {
+                        printMessage(result.level(), message.content());
                     }
                     default -> {
                         // No operation needed
                     }
                 }
                 switch (checkCredentialCommands(manager, shellArguments)) {
-                    case Triplet(LoopInstruction instruction, EvaluationResult result, String message) when instruction == LoopInstruction.EXIT -> {
-                        LOGGER.log(result.level(), message);
-                        printMessage(result.level(), message);
+                    case Triplet(LoopInstruction instruction, EvaluationResult result, Message message) when instruction == LoopInstruction.EXIT -> {
+                        if (!message.isSensitive()) {
+                            LOGGER.log(result.level(), message.content());
+                        }
+                        reader.getHistory().purge();
+                        printMessage(result.level(), message.content());
                         return;
                     }
-                    case Triplet(LoopInstruction instruction, EvaluationResult result, String message) when instruction == LoopInstruction.SKIP -> {
-                        printMessage(result.level(), message);
+                    case Triplet(LoopInstruction instruction, EvaluationResult result, Message message) when instruction == LoopInstruction.SKIP -> {
+                        reader.getHistory().purge();
+                        printMessage(result.level(), message.content());
                         continue;
                     }
-                    case Triplet(LoopInstruction instruction, EvaluationResult result, String message) when message != null -> {
-                        printMessage(result.level(), message);
+                    case Triplet(LoopInstruction instruction, EvaluationResult result, Message message) when message.content() != null -> {
+                        reader.getHistory().purge();
+                        printMessage(result.level(), message.content());
                     }
                     default -> {
                         // No operation needed
@@ -193,9 +206,9 @@ public class ShellApplication {
         builder.option(Option.HISTORY_BEEP, false);
         builder.option(Option.HISTORY_IGNORE_DUPS, true);
         builder.option(Option.HISTORY_IGNORE_SPACE, true);
-        builder.option(LineReader.Option.AUTO_LIST, true);
-        builder.option(LineReader.Option.LIST_PACKED, true);
-        builder.option(LineReader.Option.AUTO_MENU, true);
+        builder.option(Option.AUTO_LIST, true);
+        builder.option(Option.LIST_PACKED, true);
+        builder.option(Option.AUTO_MENU, true);
         builder.option(Option.MENU_COMPLETE, true);
         builder.option(Option.AUTO_FRESH_LINE, true);
         builder.option(Option.CASE_INSENSITIVE, true);
@@ -242,19 +255,19 @@ public class ShellApplication {
         return Triplet.of(FlowInstruction.TERMINATE, EvaluationResult.FAILURE, error.orElse("Unknown error"));
     }
 
-    private static Triplet<FlowInstruction, EvaluationResult, String> checkGenericNonInteractiveCommands(VaultManager manager, String[] arguments) {
+    private static Triplet<FlowInstruction, EvaluationResult, Message> checkGenericNonInteractiveCommands(VaultManager manager, String[] arguments) {
         if (GenericNonInteractiveCommandType.IMPORT_VAULT.is(arguments[0])) {
             if (!manager.importVault(Paths.get(arguments[1]), arguments[2], arguments[3])) {
                 return Triplet.of(
                         FlowInstruction.TERMINATE,
                         EvaluationResult.FAILURE,
-                        "Failed to import vault with name: " + arguments[2]
+                        Message.of("Failed to import vault with name: " + arguments[2], false)
                 );
             }
             return Triplet.of(
                     FlowInstruction.TERMINATE,
                     EvaluationResult.SUCCESS,
-                    "Succeeded to import vault with name: " + arguments[2]
+                    Message.of("Succeeded to import vault with name: " + arguments[2], false)
             );
         }
         if (GenericNonInteractiveCommandType.EXPORT_VAULT.is(arguments[0])) {
@@ -262,13 +275,13 @@ public class ShellApplication {
                 return Triplet.of(
                         FlowInstruction.TERMINATE,
                         EvaluationResult.FAILURE,
-                        "Failed to export vault with name: " + arguments[2]
+                        Message.of("Failed to export vault with name: " + arguments[2], false)
                 );
             }
             return Triplet.of(
                     FlowInstruction.TERMINATE,
                     EvaluationResult.SUCCESS,
-                    "Succeeded to export vault with name: " + arguments[2]
+                    Message.of("Succeeded to export vault with name: " + arguments[2], false)
             );
         }
         if (GenericNonInteractiveCommandType.CLEAR_CONTEXT.is(arguments[0])) {
@@ -278,13 +291,36 @@ public class ShellApplication {
                 return Triplet.of(
                         FlowInstruction.TERMINATE,
                         EvaluationResult.FAILURE,
-                        "Failed to clear context: application's history records and/or status logs may have not been completely cleared"
+                        Message.of("Failed to clear context: application's history records and/or status logs may have not been completely cleared", false)
                 );
             }
             return Triplet.of(
                     FlowInstruction.TERMINATE,
                     EvaluationResult.SUCCESS,
-                    "Succeeded to clear context: application's history records and status logs have been cleared"
+                    Message.of("Succeeded to clear context: application's history records and status logs have been cleared", false)
+            );
+        }
+        if (GenericNonInteractiveCommandType.WIPE_DATA.is(arguments[0])) {
+            String user = GlobalUtility.getSystemUser();
+            if (!user.equalsIgnoreCase(arguments[1])) {
+                return Triplet.of(
+                        FlowInstruction.TERMINATE,
+                        EvaluationResult.FAILURE,
+                        Message.of("Failed to wipe data of user: " + user, true)
+                );
+            }
+            boolean isDataCleared = PathUtility.deleteRecursively(Paths.get("./data/"));
+            if (!isDataCleared) {
+                return Triplet.of(
+                        FlowInstruction.TERMINATE,
+                        EvaluationResult.FAILURE,
+                        Message.of("Failed to wipe data of user: " + user, true)
+                );
+            }
+            return Triplet.of(
+                    FlowInstruction.TERMINATE,
+                    EvaluationResult.SUCCESS,
+                    Message.of("Succeeded to wipe data of user: " + user, true)
             );
         }
         if (GenericNonInteractiveCommandType.TEST_GIVEN_PASSWORD.is(arguments[0])) {
@@ -292,36 +328,40 @@ public class ShellApplication {
             return Triplet.of(
                     FlowInstruction.TERMINATE,
                     EvaluationResult.SUCCESS,
-                    buildTable(
-                            CellSize.WRAP_SMALL,
-                            List.of("Strength", "Score"),
-                            List.of(List.of(
-                                    advices.first().name(),
-                                    String.valueOf(advices.first().score())
-                            ))
-                    ) + '\n' + buildTable(
-                            CellSize.WRAP_MEDIUM,
-                            List.of("Advice"),
-                            Stream.of(advices.second()).map(Collections::singletonList).toList()
-                    )
+                    Message.of(String.format(
+                            "%s\n%s",
+                            buildTable(
+                                    CellSize.WRAP_SMALL,
+                                    List.of("Strength", "Score"),
+                                    List.of(List.of(
+                                            advices.first().name(),
+                                            String.valueOf(advices.first().score())
+                                    ))
+                            ),
+                            buildTable(
+                                    CellSize.WRAP_MEDIUM,
+                                    List.of("Advice"),
+                                    Stream.of(advices.second()).map(Collections::singletonList).toList()
+                            )
+                    ), true)
             );
         }
-        return Triplet.of(FlowInstruction.PROCEED, EvaluationResult.SUCCESS, null);
+        return Triplet.of(FlowInstruction.PROCEED, EvaluationResult.SUCCESS, Message.of(null, false));
     }
 
-    private static Triplet<FlowInstruction, EvaluationResult, String> checkVaultCommands(VaultManager manager, String[] arguments) {
+    private static Triplet<FlowInstruction, EvaluationResult, Message> checkVaultCommands(VaultManager manager, String[] arguments) {
         if (VaultCommandType.GET.is(arguments[0])) {
             if (!manager.authenticate(arguments[1], arguments[2])) {
                 return Triplet.of(
                         FlowInstruction.TERMINATE,
                         EvaluationResult.FAILURE,
-                        "Authentication failed to vault with name: " + arguments[1]
+                        Message.of("Authentication failed to vault with name: " + arguments[1], false)
                 );
             }
             return Triplet.of(
                     FlowInstruction.PROCEED,
                     EvaluationResult.SUCCESS,
-                    "Authentication succeeded to vault with name: " + arguments[1]
+                    Message.of("Authentication succeeded to vault with name: " + arguments[1], false)
             );
         }
         if (VaultCommandType.GET_ALL.is(arguments[0])) {
@@ -330,17 +370,17 @@ public class ShellApplication {
                 return Triplet.of(
                         FlowInstruction.TERMINATE,
                         EvaluationResult.FAILURE,
-                        "Failed to get all vaults"
+                        Message.of("Failed to get all vaults", false)
                 );
             }
             return Triplet.of(
                     FlowInstruction.TERMINATE,
                     EvaluationResult.SUCCESS,
-                    buildTable(
+                    Message.of(buildTable(
                             CellSize.WRAP_SMALL,
                             List.of("Name"),
                             vaults.get().stream().map(Collections::singletonList).toList()
-                    )
+                    ), true)
             );
         }
         if (VaultCommandType.ADD.is(arguments[0])) {
@@ -348,13 +388,13 @@ public class ShellApplication {
                 return Triplet.of(
                         FlowInstruction.TERMINATE,
                         EvaluationResult.FAILURE,
-                        "Failed to add vault with name: " + arguments[1]
+                        Message.of("Failed to add vault with name: " + arguments[1], false)
                 );
             }
             return Triplet.of(
                     FlowInstruction.TERMINATE,
                     EvaluationResult.SUCCESS,
-                    "Succeeded to add vault with name: " + arguments[1]
+                    Message.of("Succeeded to add vault with name: " + arguments[1], false)
             );
         }
         if (VaultCommandType.REMOVE.is(arguments[0])) {
@@ -362,36 +402,36 @@ public class ShellApplication {
                 return Triplet.of(
                         FlowInstruction.TERMINATE,
                         EvaluationResult.FAILURE,
-                        "Failed to remove vault with name: " + arguments[1]
+                        Message.of("Failed to remove vault with name: " + arguments[1], false)
                 );
             }
             return Triplet.of(
                     FlowInstruction.TERMINATE,
                     EvaluationResult.SUCCESS,
-                    "Succeeded to remove vault with name: " + arguments[1]
+                    Message.of("Succeeded to remove vault with name: " + arguments[1], false)
             );
         }
         return Triplet.of(
                 FlowInstruction.TERMINATE,
                 EvaluationResult.FAILURE,
-                "No command found with name: " + arguments[0]
+                Message.of("No command found with name: " + arguments[0], false)
         );
     }
 
-    private static Triplet<LoopInstruction, EvaluationResult, String> checkGenericInteractiveCommands(VaultManager vaultManager, String[] arguments) {
+    private static Triplet<LoopInstruction, EvaluationResult, Message> checkGenericInteractiveCommands(VaultManager vaultManager, String[] arguments) {
         Optional<CredentialManager> credentialManager = vaultManager.getManager();
         if (credentialManager.isEmpty()) {
             return Triplet.of(
                     LoopInstruction.EXIT,
                     EvaluationResult.FAILURE,
-                    "No current authenticated vault was found"
+                    Message.of("No current authenticated vault was found", false)
             );
         }
         if (GenericInteractiveCommandType.CURRENT_VAULT.is(arguments[0])) {
             return Triplet.of(
                     LoopInstruction.SKIP,
                     EvaluationResult.SUCCESS,
-                    "Current vault: " + credentialManager.get().getVault().getName()
+                    Message.of("Current vault: " + credentialManager.get().getVault().getName(), true)
             );
         }
         if (GenericInteractiveCommandType.GENERATE_PASSWORD.is(arguments[0])) {
@@ -399,7 +439,7 @@ public class ShellApplication {
             return Triplet.of(
                     LoopInstruction.SKIP,
                     EvaluationResult.SUCCESS,
-                    "Generated password: " + credentialManager.get().generatePassword(length)
+                    Message.of("Generated password: " + credentialManager.get().generatePassword(length), true)
             );
         }
         if (GenericInteractiveCommandType.TEST_EXISTING_PASSWORD.is(arguments[0])) {
@@ -408,47 +448,51 @@ public class ShellApplication {
                 return Triplet.of(
                         LoopInstruction.SKIP,
                         EvaluationResult.FAILURE,
-                        "No password found with platform: " + arguments[1]
+                        Message.of("No password found with platform: " + arguments[1], false)
                 );
             }
             return Triplet.of(
                     LoopInstruction.SKIP,
                     EvaluationResult.SUCCESS,
-                    buildTable(
-                            CellSize.WRAP_SMALL,
-                            List.of("Strength", "Score"),
-                            List.of(List.of(
-                                    advices.get().first().name(),
-                                    String.valueOf(advices.get().first().score())
-                            ))
-                    ) + '\n' + buildTable(
-                            CellSize.WRAP_MEDIUM,
-                            List.of("Advice"),
-                            Stream.of(advices.get().second()).map(Collections::singletonList).toList()
-                    )
+                    Message.of(String.format(
+                            "%s\n%s",
+                            buildTable(
+                                    CellSize.WRAP_SMALL,
+                                    List.of("Strength", "Score"),
+                                    List.of(List.of(
+                                            advices.get().first().name(),
+                                            String.valueOf(advices.get().first().score())
+                                    ))
+                            ),
+                            buildTable(
+                                    CellSize.WRAP_MEDIUM,
+                                    List.of("Advice"),
+                                    Stream.of(advices.get().second()).map(Collections::singletonList).toList()
+                            )
+                    ), true)
             );
         }
         if (GenericInteractiveCommandType.QUIT_SHELL.is(arguments[0]) || GenericInteractiveCommandType.EXIT_SHELL.is(arguments[0])) {
             return Triplet.of(
                     LoopInstruction.EXIT,
                     EvaluationResult.SUCCESS,
-                    "Closing the shell..."
+                    Message.of("Closing the shell...", false)
             );
         }
         return Triplet.of(
                 LoopInstruction.CONTINUE,
                 EvaluationResult.SUCCESS,
-                null
+                Message.of(null, false)
         );
     }
 
-    private static Triplet<LoopInstruction, EvaluationResult, String> checkCredentialCommands(VaultManager vaultManager, String[] arguments) {
+    private static Triplet<LoopInstruction, EvaluationResult, Message> checkCredentialCommands(VaultManager vaultManager, String[] arguments) {
         Optional<CredentialManager> credentialManager = vaultManager.getManager();
         if (credentialManager.isEmpty()) {
             return Triplet.of(
                     LoopInstruction.EXIT,
                     EvaluationResult.FAILURE,
-                    "No current authenticated vault was found"
+                    Message.of("No current authenticated vault was found", false)
             );
         }
         if (CredentialCommandType.GET.is(arguments[0])) {
@@ -457,7 +501,7 @@ public class ShellApplication {
                 return Triplet.of(
                         LoopInstruction.SKIP,
                         EvaluationResult.FAILURE,
-                        "No credential found with platform: " + arguments[1]
+                        Message.of("No credential found with platform: " + arguments[1], false)
                 );
             }
             Optional<String> username = credential.get().getDecryptedUsername();
@@ -466,13 +510,13 @@ public class ShellApplication {
                 return Triplet.of(
                         LoopInstruction.SKIP,
                         EvaluationResult.FAILURE,
-                        "Failed to decrypt credential of platform: " + arguments[1]
+                        Message.of("Failed to decrypt credential of platform: " + arguments[1], false)
                 );
             }
             return Triplet.of(
                     LoopInstruction.SKIP,
                     EvaluationResult.SUCCESS,
-                    buildTable(
+                    Message.of(buildTable(
                             CellSize.WRAP_SMALL,
                             List.of("Platform", "Username", "Password"),
                             List.of(List.of(
@@ -480,7 +524,7 @@ public class ShellApplication {
                                     username.get(),
                                     password.get()
                             ))
-                    )
+                    ), true)
             );
         }
         if (CredentialCommandType.GET_ALL.is(arguments[0])) {
@@ -489,17 +533,17 @@ public class ShellApplication {
                 return Triplet.of(
                         LoopInstruction.SKIP,
                         EvaluationResult.FAILURE,
-                        "No credential found"
+                        Message.of("No credential found", false)
                 );
             }
             return Triplet.of(
                     LoopInstruction.SKIP,
                     EvaluationResult.SUCCESS,
-                    buildTable(
+                    Message.of(buildTable(
                             CellSize.WRAP_SMALL,
                             List.of("Platform"),
                             credentials.get().stream().map(Collections::singletonList).toList()
-                    )
+                    ), true)
             );
         }
         if (CredentialCommandType.SET.is(arguments[0])) {
@@ -507,13 +551,13 @@ public class ShellApplication {
                 return Triplet.of(
                         LoopInstruction.SKIP,
                         EvaluationResult.FAILURE,
-                        "Failed to set credential with platform: " + arguments[1]
+                        Message.of("Failed to set credential with platform: " + arguments[1], false)
                 );
             }
             return Triplet.of(
                     LoopInstruction.SKIP,
                     EvaluationResult.SUCCESS,
-                    "Succeeded to set credential with platform: " + arguments[1]
+                    Message.of("Succeeded to set credential with platform: " + arguments[1], false)
             );
         }
         if (CredentialCommandType.ADD.is(arguments[0])) {
@@ -521,13 +565,13 @@ public class ShellApplication {
                 return Triplet.of(
                         LoopInstruction.SKIP,
                         EvaluationResult.FAILURE,
-                        "Failed to add credential with platform: " + arguments[1]
+                        Message.of("Failed to add credential with platform: " + arguments[1], false)
                 );
             }
             return Triplet.of(
                     LoopInstruction.SKIP,
                     EvaluationResult.SUCCESS,
-                    "Succeeded to add credential with platform: " + arguments[1]
+                    Message.of("Succeeded to add credential with platform: " + arguments[1], false)
             );
         }
         if (CredentialCommandType.REMOVE.is(arguments[0])) {
@@ -535,13 +579,13 @@ public class ShellApplication {
                 return Triplet.of(
                         LoopInstruction.SKIP,
                         EvaluationResult.FAILURE,
-                        "Failed to remove credential with platform: " + arguments[1]
+                        Message.of("Failed to remove credential with platform: " + arguments[1], false)
                 );
             }
             return Triplet.of(
                     LoopInstruction.SKIP,
                     EvaluationResult.SUCCESS,
-                    "Succeeded to remove credential with platform: " + arguments[1]
+                    Message.of("Succeeded to remove credential with platform: " + arguments[1], false)
             );
         }
         if (CredentialCommandType.REMOVE_ALL.is(arguments[0])) {
@@ -549,19 +593,19 @@ public class ShellApplication {
                 return Triplet.of(
                         LoopInstruction.SKIP,
                         EvaluationResult.FAILURE,
-                        "Failed to remove all credentials"
+                        Message.of("Failed to remove all credentials", false)
                 );
             }
             return Triplet.of(
                     LoopInstruction.SKIP,
                     EvaluationResult.SUCCESS,
-                    "Succeeded to remove all credentials"
+                    Message.of("Succeeded to remove all credentials", false)
             );
         }
         return Triplet.of(
                 LoopInstruction.CONTINUE,
                 EvaluationResult.SUCCESS,
-                null
+                Message.of(null, false)
         );
     }
 

@@ -123,14 +123,31 @@ public class TableBuilder implements AutoCloseable {
         clear();
     }
 
-    private static String createTableSeparator(int attributesCount, int attributesWidth) {
-        StringBuilder tableSeparator = new StringBuilder();
-        for (int i = 0; i < attributesCount; i++) {
-            tableSeparator.append('+');
-            tableSeparator.append("-".repeat(attributesWidth));
+    private static Optional<String> createTableHead(List<String> attributes, CellSize cellSize) {
+        StringBuilder tableHead = new StringBuilder();
+        Optional<String> tableRow = createTableRow(attributes, cellSize);
+        if (tableRow.isEmpty()) {
+            return Optional.empty();
         }
-        tableSeparator.append('+');
-        return tableSeparator.toString();
+        tableHead.append(tableRow.get());
+        tableHead.append(createTableSeparator(attributes.size(), cellSize.width()));
+        tableHead.append('\n');
+        return Optional.of(tableHead.toString());
+    }
+
+    private static Optional<String> createTableBody(List<List<String>> records, int attributesCount, CellSize cellSize) {
+        StringBuilder tableBody = new StringBuilder();
+        for (List<String> record : records) {
+            GlobalUtility.resizeList(record, attributesCount);
+            Optional<String> tableRow = createTableRow(record, cellSize);
+            if (tableRow.isEmpty()) {
+                return Optional.empty();
+            }
+            tableBody.append(tableRow.get());
+        }
+        tableBody.append(createTableSeparator(attributesCount, cellSize.width()));
+        tableBody.append('\n');
+        return Optional.of(tableBody.toString());
     }
 
     private static Optional<String> createTableRow(List<String> values, CellSize cellSize) {
@@ -171,31 +188,14 @@ public class TableBuilder implements AutoCloseable {
         return Optional.of(tableRow.toString());
     }
 
-    private static Optional<String> createTableHead(List<String> attributes, CellSize cellSize) {
-        StringBuilder tableHead = new StringBuilder();
-        Optional<String> tableRow = createTableRow(attributes, cellSize);
-        if (tableRow.isEmpty()) {
-            return Optional.empty();
+    private static String createTableSeparator(int attributesCount, int attributesWidth) {
+        StringBuilder tableSeparator = new StringBuilder();
+        for (int i = 0; i < attributesCount; i++) {
+            tableSeparator.append('+');
+            tableSeparator.append("-".repeat(attributesWidth));
         }
-        tableHead.append(tableRow.get());
-        tableHead.append(createTableSeparator(attributes.size(), cellSize.width()));
-        tableHead.append('\n');
-        return Optional.of(tableHead.toString());
-    }
-
-    private static Optional<String> createTableBody(List<List<String>> records, int attributesCount, CellSize cellSize) {
-        StringBuilder tableBody = new StringBuilder();
-        for (List<String> record : records) {
-            GlobalUtility.resizeList(record, attributesCount);
-            Optional<String> tableRow = createTableRow(record, cellSize);
-            if (tableRow.isEmpty()) {
-                return Optional.empty();
-            }
-            tableBody.append(tableRow.get());
-        }
-        tableBody.append(createTableSeparator(attributesCount, cellSize.width()));
-        tableBody.append('\n');
-        return Optional.of(tableBody.toString());
+        tableSeparator.append('+');
+        return tableSeparator.toString();
     }
 
 }
