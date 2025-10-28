@@ -10,7 +10,7 @@ import java.util.Optional;
 import java.util.logging.Logger;
 
 @SuppressWarnings("unused")
-public class StorageUtility {
+public final class StorageUtility {
 
     private static final Logger LOGGER = Logger.getLogger(StorageUtility.class.getName());
 
