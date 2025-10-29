@@ -7,6 +7,7 @@ public final class GlobalConstants {
 
     public static final String APPLICATION_NAME = "Aegis Credential Manager";
     public static final String APPLICATION_VERSION = "1.0.0";
+    public static final String WORKING_DIRECTORY = GlobalUtility.getWorkingDirectory();
     public static final String ROOT_LOGGER = "";
     public static final String DEBUG_PROPERTY = "acm.debug";
     public static final String SHELL_PROMPT = String.format("%s@aegis> ", GlobalUtility.getSystemUser());

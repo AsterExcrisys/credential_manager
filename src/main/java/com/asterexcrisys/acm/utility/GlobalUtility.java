@@ -5,6 +5,8 @@ import com.asterexcrisys.acm.types.utility.Outcome;
 import com.asterexcrisys.acm.types.utility.Result;
 import oshi.SystemInfo;
 import oshi.hardware.ComputerSystem;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -38,6 +40,11 @@ public final class GlobalUtility {
 
     public static String getSystemUser() {
         return System.getProperty("user.name", "unknown");
+    }
+
+    public static String getWorkingDirectory() {
+        Path workingDirectory = Paths.get(System.getProperty("user.home", System.getProperty("user.dir", "./")));
+        return workingDirectory.resolve(".acm/").toAbsolutePath().toString();
     }
 
     public static String getCurrentDate() {
