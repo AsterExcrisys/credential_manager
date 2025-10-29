@@ -33,7 +33,7 @@ public class VaultManager implements AutoCloseable {
     private final VaultDatabase database;
     private CredentialManager manager;
 
-    public VaultManager(SecretKey key) throws NullPointerException, DerivationException, DatabaseException {
+    public VaultManager(SecretKey key) throws NullPointerException, DatabaseException {
         database = new VaultDatabase(Base64.getEncoder().encodeToString(key.getEncoded()));
         manager = null;
         initialize();
