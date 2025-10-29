@@ -187,6 +187,7 @@ public class VaultManager implements AutoCloseable {
         return Pair.of(passwordTester.getStrengthGrade(), passwordTester.getSafetyAdvices());
     }
 
+    @Override
     public void close() {
         database.close();
         if (manager != null) {

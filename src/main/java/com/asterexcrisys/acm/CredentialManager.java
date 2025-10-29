@@ -138,6 +138,7 @@ public class CredentialManager implements AutoCloseable {
         return Optional.of(Pair.of(passwordTester.getStrengthGrade(), passwordTester.getSafetyAdvices()));
     }
 
+    @Override
     public void close() {
         database.close();
     }
