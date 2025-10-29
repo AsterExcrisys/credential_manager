@@ -8,6 +8,7 @@ import org.bouncycastle.crypto.params.Argon2Parameters.Builder;
 import org.bouncycastle.util.Arrays;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Base64;
@@ -37,6 +38,17 @@ public final class HashingUtility {
             return Optional.of(salt);
         } catch (NoSuchAlgorithmException e) {
             LOGGER.warning("Error generating salt: " + e.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    public static Optional<String> hashMessage(String message) {
+        try {
+            MessageDigest generator = MessageDigest.getInstance(HashingConstants.HASHING_ALGORITHM);
+            byte[] hashedData = generator.digest(message.getBytes(StandardCharsets.UTF_8));
+            return Optional.of(Base64.getEncoder().encodeToString(hashedData));
+        } catch (NoSuchAlgorithmException e) {
+            LOGGER.warning("Error hashing message: " + e.getMessage());
             return Optional.empty();
         }
     }

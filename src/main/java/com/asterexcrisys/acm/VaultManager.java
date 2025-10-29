@@ -13,6 +13,7 @@ import com.asterexcrisys.acm.types.encryption.Vault;
 import com.asterexcrisys.acm.types.utility.Pair;
 import com.asterexcrisys.acm.types.utility.PasswordStrength;
 import com.asterexcrisys.acm.utility.PathUtility;
+import javax.crypto.SecretKey;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -31,6 +32,12 @@ public class VaultManager implements AutoCloseable {
 
     private final VaultDatabase database;
     private CredentialManager manager;
+
+    public VaultManager(SecretKey key) throws NullPointerException, DerivationException, DatabaseException {
+        database = new VaultDatabase(Base64.getEncoder().encodeToString(key.getEncoded()));
+        manager = null;
+        initialize();
+    }
 
     public VaultManager(String masterKey, String sealedSalt) throws NullPointerException, DerivationException, DatabaseException {
         database = new VaultDatabase(EncryptionUtility.deriveKey(

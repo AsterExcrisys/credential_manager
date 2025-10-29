@@ -6,6 +6,7 @@ import java.util.Set;
 public final class StorageConstants {
 
     public static final int NONCE_LENGTH = 16;
+    public static final String STORE_MODE_PROPERTY = "store-mode";
     public static final String MASTER_KEY_STORE = "store";
     public static final String MASTER_KEY_IDENTIFIER = "identifier";
     public static final String KEY_GENERATION_ALGORITHM = "RSA";

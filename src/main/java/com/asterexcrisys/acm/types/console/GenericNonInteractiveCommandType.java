@@ -9,6 +9,13 @@ import java.util.Optional;
 @SuppressWarnings("unused")
 public enum GenericNonInteractiveCommandType implements CommandType {
 
+    SHOW_INFORMATION(
+           "-si",
+            "--show-information",
+            0,
+            new Class[] {},
+            new Validator[] {}
+    ),
     IMPORT_VAULT(
             "-iv",
             "--import-vault",

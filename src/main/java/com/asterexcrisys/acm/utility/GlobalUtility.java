@@ -1,15 +1,21 @@
 package com.asterexcrisys.acm.utility;
 
 import com.asterexcrisys.acm.constants.GlobalConstants;
+import com.asterexcrisys.acm.types.utility.Outcome;
+import com.asterexcrisys.acm.types.utility.Result;
 import oshi.SystemInfo;
 import oshi.hardware.ComputerSystem;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.Callable;
+import java.util.logging.Logger;
 
 @SuppressWarnings("unused")
 public final class GlobalUtility {
+
+    private static final Logger LOGGER = Logger.getLogger(GlobalUtility.class.getName());
 
     private GlobalUtility() {
         // This class should not be instantiable
@@ -21,8 +27,13 @@ public final class GlobalUtility {
 
     public static Optional<String> getSystemIdentifier() {
         ComputerSystem computerSystem = (new SystemInfo()).getHardware().getComputerSystem();
-        String identifier = computerSystem.getSerialNumber().concat(computerSystem.getHardwareUUID());
-        return HashingUtility.hashPassword(identifier);
+        String identifier = String.format(
+                "%s-%s-%s",
+                computerSystem.getSerialNumber(),
+                computerSystem.getHardwareUUID(),
+                getSystemUser()
+        );
+        return HashingUtility.hashMessage(identifier);
     }
 
     public static String getSystemUser() {
@@ -33,6 +44,31 @@ public final class GlobalUtility {
         LocalDateTime now = LocalDateTime.now();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern(GlobalConstants.DATE_FORMAT);
         return now.format(formatter);
+    }
+
+    public static <T> Result<T, Exception> wrapExceptionOld(Callable<T> code) {
+        try {
+            return Result.success(code.call());
+        } catch (Exception e) {
+            return Result.failure(e);
+        }
+    }
+
+    public static <T> Outcome<T, Exception> wrapExceptionNew(Callable<T> code) {
+        try {
+            return Outcome.ofValue(code.call());
+        } catch (Exception e) {
+            return Outcome.ofError(e);
+        }
+    }
+
+    public static <T> T ifThrows(Callable<T> code, T defaultValue) {
+        try {
+            return code.call();
+        } catch (Exception e) {
+            LOGGER.warning("Error executing callable: " + e.getMessage());
+            return defaultValue;
+        }
     }
 
     public static <T> void resizeList(List<T> list, int desiredSize) {

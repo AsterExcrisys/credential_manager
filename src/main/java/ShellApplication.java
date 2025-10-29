@@ -2,7 +2,16 @@ import com.asterexcrisys.acm.CredentialManager;
 import com.asterexcrisys.acm.VaultManager;
 import com.asterexcrisys.acm.constants.GlobalConstants;
 import com.asterexcrisys.acm.constants.HashingConstants;
+import com.asterexcrisys.acm.constants.StorageConstants;
+import com.asterexcrisys.acm.exceptions.HashingException;
 import com.asterexcrisys.acm.services.console.TableBuilder;
+import com.asterexcrisys.acm.services.encryption.GenericEncryptor;
+import com.asterexcrisys.acm.services.encryption.KeyEncryptor;
+import com.asterexcrisys.acm.services.storage.HardwareStore;
+import com.asterexcrisys.acm.services.storage.SoftwareStore;
+import com.asterexcrisys.acm.services.utility.ConfigurationManager;
+import com.asterexcrisys.acm.types.storage.SoftwareStoreType;
+import com.asterexcrisys.acm.types.storage.StoreMode;
 import com.asterexcrisys.acm.types.utility.*;
 import com.asterexcrisys.acm.utility.EncryptionUtility;
 import com.asterexcrisys.acm.utility.GlobalUtility;
@@ -25,6 +34,7 @@ import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
 import oshi.SystemInfo;
 import oshi.hardware.ComputerSystem;
+import javax.crypto.SecretKey;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -63,18 +73,17 @@ public class ShellApplication {
             }
         } catch (Exception e) {
             LOGGER.severe("Error starting up application: " + e.getMessage());
-            printMessage(Level.SEVERE, "An error occurred during the application startup");
+            printMessage(Level.SEVERE, "An error occurred during the application start-up");
             System.exit(1);
             return;
         }
-        ComputerSystem computerSystem = (new SystemInfo()).getHardware().getComputerSystem();
-        try (VaultManager manager = new VaultManager(
-                computerSystem.getHardwareUUID(),
-                Base64.getEncoder().encodeToString(EncryptionUtility.checkPadding(
-                        computerSystem.getSerialNumber().getBytes(StandardCharsets.UTF_8),
-                        HashingConstants.SALT_SIZE
-                ))
-        )) {
+        Optional<SecretKey> key = loadKey();
+        if (key.isEmpty()) {
+            printMessage(Level.SEVERE, "An error occurred while loading the key");
+            System.exit(1);
+            return;
+        }
+        try (VaultManager manager = new VaultManager(key.get())) {
             switch (checkGenericNonInteractiveCommands(manager, programArguments)) {
                 case Triplet(FlowInstruction instruction, EvaluationResult result, Message message) when instruction == FlowInstruction.TERMINATE -> {
                     if (!message.isSensitive()) {
@@ -235,7 +244,7 @@ public class ShellApplication {
         return builder.build();
     }
 
-    public static void printMessage(Level level, String message) {
+    private static void printMessage(Level level, String message) {
         if (level.intValue() >= Level.FINEST.intValue() && level.intValue() <= Level.INFO.intValue()) {
             System.out.println(message);
             System.out.flush();
@@ -245,17 +254,99 @@ public class ShellApplication {
         }
     }
 
+    private static Optional<SecretKey> loadKey() {
+        ConfigurationManager manager = new ConfigurationManager();
+        // TODO: replace StoreMode.SOFTWARE with StoreMode.HARDWARE once TPM2 implementation is ready
+        StoreMode mode = GlobalUtility.ifThrows(() -> {
+            return StoreMode.valueOf(manager.get(StorageConstants.STORE_MODE_PROPERTY).orElseThrow());
+        }, StoreMode.SOFTWARE);
+        return switch (mode) {
+            case HARDWARE -> {
+                Outcome<HardwareStore, Exception> outcome = GlobalUtility.wrapExceptionNew(() -> {
+                    return new HardwareStore(StorageConstants.MASTER_KEY_STORE);
+                });
+                if (outcome.isFailure()) {
+                    LOGGER.severe("Error loading hardware store: " + outcome.getError().getMessage());
+                    manager.put(StorageConstants.STORE_MODE_PROPERTY, StoreMode.SOFTWARE.name());
+                    yield loadKey();
+                }
+                manager.put(StorageConstants.STORE_MODE_PROPERTY, StoreMode.HARDWARE.name());
+                yield outcome.getValue().retrieve(StorageConstants.MASTER_KEY_IDENTIFIER).or(() -> {
+                    Optional<SecretKey> key = GenericEncryptor.generateKey();
+                    if (key.isEmpty()) {
+                        return Optional.empty();
+                    }
+                    boolean isSaved = outcome.getValue().save(StorageConstants.MASTER_KEY_IDENTIFIER, key.get());
+                    if (!isSaved) {
+                        return Optional.empty();
+                    }
+                    return key;
+                });
+            }
+            case SOFTWARE -> {
+                Outcome<SoftwareStore, Exception> outcome = GlobalUtility.wrapExceptionNew(() -> {
+                    return new SoftwareStore(
+                            StorageConstants.MASTER_KEY_STORE,
+                            GlobalUtility.getSystemIdentifier().orElseThrow(HashingException::new),
+                            SoftwareStoreType.JCEKS
+                    );
+                });
+                if (outcome.isFailure()) {
+                    LOGGER.severe("Error loading software store: " + outcome.getError().getMessage());
+                    manager.put(StorageConstants.STORE_MODE_PROPERTY, StoreMode.NONE.name());
+                    yield loadKey();
+                }
+                manager.put(StorageConstants.STORE_MODE_PROPERTY, StoreMode.SOFTWARE.name());
+                yield outcome.getValue().retrieve(StorageConstants.MASTER_KEY_IDENTIFIER).or(() -> {
+                    Optional<SecretKey> key = GenericEncryptor.generateKey();
+                    if (key.isEmpty()) {
+                        return Optional.empty();
+                    }
+                    boolean isSaved = outcome.getValue().save(StorageConstants.MASTER_KEY_IDENTIFIER, key.get());
+                    if (!isSaved) {
+                        return Optional.empty();
+                    }
+                    return key;
+                });
+            }
+            case NONE -> {
+                ComputerSystem computerSystem = (new SystemInfo()).getHardware().getComputerSystem();
+                manager.put(StorageConstants.STORE_MODE_PROPERTY, StoreMode.NONE.name());
+                yield KeyEncryptor.deriveKey(
+                        computerSystem.getHardwareUUID(),
+                        EncryptionUtility.checkPadding(
+                                computerSystem.getSerialNumber().getBytes(StandardCharsets.UTF_8),
+                                HashingConstants.SALT_SIZE
+                        )
+                );
+            }
+        };
+    }
+
     private static Triplet<FlowInstruction, EvaluationResult, String> validateArguments(String[] arguments, ShellType type) {
         ShellArgumentParser parser = new ShellArgumentParser(type.filter());
-        Result<? extends CommandType, String> result = parser.parseOld(arguments);
-        if (result.isSuccess()) {
+        Outcome<? extends CommandType, String> outcome = parser.parseNew(arguments);
+        if (outcome.isSuccess()) {
             return Triplet.of(FlowInstruction.PROCEED, EvaluationResult.SUCCESS, null);
         }
-        Optional<String> error = result.getError();
-        return Triplet.of(FlowInstruction.TERMINATE, EvaluationResult.FAILURE, error.orElse("Unknown error"));
+        return Triplet.of(FlowInstruction.TERMINATE, EvaluationResult.FAILURE, outcome.getError());
     }
 
     private static Triplet<FlowInstruction, EvaluationResult, Message> checkGenericNonInteractiveCommands(VaultManager manager, String[] arguments) {
+        if (GenericNonInteractiveCommandType.SHOW_INFORMATION.is(arguments[0])) {
+            return Triplet.of(
+                    FlowInstruction.TERMINATE,
+                    EvaluationResult.SUCCESS,
+                    Message.of(buildTable(
+                            CellSize.WRAP_SMALL,
+                            List.of("Name", "Version"),
+                            List.of(
+                                    List.of(GlobalConstants.APPLICATION_NAME),
+                                    List.of(GlobalConstants.APPLICATION_VERSION)
+                            )
+                    ), false)
+            );
+        }
         if (GenericNonInteractiveCommandType.IMPORT_VAULT.is(arguments[0])) {
             if (!manager.importVault(Paths.get(arguments[1]), arguments[2], arguments[3])) {
                 return Triplet.of(

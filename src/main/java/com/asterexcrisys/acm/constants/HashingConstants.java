@@ -11,6 +11,7 @@ public final class HashingConstants {
      public static final int KEY_SIZE = 256;
      public static final int KEY_ITERATION_COUNT = 1000000;
      public static final String KEY_DERIVATION_ALGORITHM = "PBKDF2WithHmacSHA256";
+     public static final String HASHING_ALGORITHM = "SHA-512";
 
      private HashingConstants() {
          // This class should not be instantiable
