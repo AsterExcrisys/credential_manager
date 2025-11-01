@@ -23,12 +23,11 @@ public class CredentialManager implements AutoCloseable {
 
     private static final Logger LOGGER = Logger.getLogger(CredentialManager.class.getName());
 
-    private final Vault vault;
     private final CredentialDatabase database;
     private final PasswordGenerator generator;
+    private Vault vault;
 
     public CredentialManager(String sealedSalt, String name, String password) throws NullPointerException, DerivationException, NoSuchAlgorithmException, HashingException, DatabaseException {
-        vault = new Vault(sealedSalt, name, password);
         database = new CredentialDatabase(
                 Objects.requireNonNull(name),
                 EncryptionUtility.deriveKey(
@@ -37,11 +36,11 @@ public class CredentialManager implements AutoCloseable {
                 ).orElseThrow(DerivationException::new)
         );
         generator = new PasswordGenerator();
+        vault = new Vault(sealedSalt, name, password);
         initialize();
     }
 
     public CredentialManager(String sealedSalt, String hashedPassword, String name, String password) throws NullPointerException, DerivationException, NoSuchAlgorithmException, HashingException, DatabaseException {
-        vault = new Vault(sealedSalt, hashedPassword, name, password);
         database = new CredentialDatabase(
                 Objects.requireNonNull(name),
                 EncryptionUtility.deriveKey(
@@ -50,11 +49,40 @@ public class CredentialManager implements AutoCloseable {
                 ).orElseThrow(DerivationException::new)
         );
         generator = new PasswordGenerator();
+        vault = new Vault(sealedSalt, hashedPassword, name, password);
         initialize();
     }
 
-    public Vault getVault() {
-        return vault;
+    public Optional<Vault> getVault() {
+        if (vault == null) {
+            return Optional.empty();
+        }
+        return Optional.of(vault);
+    }
+
+    // TODO: make sure to also change SQLite's master key
+    public boolean setVault(String sealedSalt, String hashedPassword, String password) {
+        try {
+            Vault vault = new Vault(sealedSalt, hashedPassword, this.vault.getName(), password);
+            Optional<List<String>> platforms = database.getAllCredentials();
+            if (platforms.isEmpty()) {
+                return false;
+            }
+            for (String platform : platforms.get()) {
+                Optional<Credential> credential = database.getCredential(platform, this.vault.getEncryptor());
+                if (credential.isEmpty()) {
+                    return false;
+                }
+                if (!database.saveCredential(credential.get(), vault.getEncryptor())) {
+                    return false;
+                }
+            }
+            this.vault = vault;
+            return true;
+        } catch (DerivationException e) {
+            LOGGER.warning("Error setting vault: " + e.getMessage());
+            return false;
+        }
     }
 
     public Optional<Credential> getCredential(String platform) {
@@ -111,12 +139,12 @@ public class CredentialManager implements AutoCloseable {
     }
 
     public boolean importVault(Path file, String password, byte[] salt, boolean shouldOverwrite) {
+        if (shouldOverwrite) {
+            return database.restoreFrom(file);
+        }
         Optional<String> masterKey = EncryptionUtility.deriveKey(password, salt);
         if (masterKey.isEmpty()) {
             return false;
-        }
-        if (shouldOverwrite) {
-            return database.restoreFrom(file);
         }
         return database.mergeWith(file, masterKey.get());
     }

@@ -10,6 +10,7 @@ import com.asterexcrisys.acm.services.encryption.KeyEncryptor;
 import com.asterexcrisys.acm.services.storage.HardwareStore;
 import com.asterexcrisys.acm.services.storage.SoftwareStore;
 import com.asterexcrisys.acm.services.utility.ConfigurationManager;
+import com.asterexcrisys.acm.types.encryption.Vault;
 import com.asterexcrisys.acm.types.storage.SoftwareStoreType;
 import com.asterexcrisys.acm.types.storage.StoreMode;
 import com.asterexcrisys.acm.types.utility.*;
@@ -77,13 +78,13 @@ public class ShellApplication {
             System.exit(1);
             return;
         }
-        Optional<SecretKey> key = loadKey();
-        if (key.isEmpty()) {
-            printMessage(Level.SEVERE, "An error occurred while loading the key");
+        Optional<SecretKey> masterKey = loadMasterKey();
+        if (masterKey.isEmpty()) {
+            printMessage(Level.SEVERE, "An error occurred while loading the master key");
             System.exit(1);
             return;
         }
-        try (VaultManager manager = new VaultManager(key.get())) {
+        try (VaultManager manager = new VaultManager(masterKey.get())) {
             switch (checkGenericNonInteractiveCommands(manager, programArguments)) {
                 case Triplet(FlowInstruction instruction, EvaluationResult result, Message message) when instruction == FlowInstruction.TERMINATE -> {
                     if (!message.isSensitive()) {
@@ -254,7 +255,7 @@ public class ShellApplication {
         }
     }
 
-    private static Optional<SecretKey> loadKey() {
+    private static Optional<SecretKey> loadMasterKey() {
         ConfigurationManager manager = new ConfigurationManager();
         // TODO: replace StoreMode.SOFTWARE with StoreMode.HARDWARE once TPM2 implementation is ready
         StoreMode mode = GlobalUtility.ifThrows(() -> {
@@ -268,7 +269,7 @@ public class ShellApplication {
                 if (outcome.isFailure()) {
                     LOGGER.severe("Error loading hardware store: " + outcome.getError().getMessage());
                     manager.put(StorageConstants.STORE_MODE_PROPERTY, StoreMode.SOFTWARE.name());
-                    yield loadKey();
+                    yield loadMasterKey();
                 }
                 manager.put(StorageConstants.STORE_MODE_PROPERTY, StoreMode.HARDWARE.name());
                 yield outcome.getValue().retrieve(StorageConstants.MASTER_KEY_IDENTIFIER).or(() -> {
@@ -294,7 +295,7 @@ public class ShellApplication {
                 if (outcome.isFailure()) {
                     LOGGER.severe("Error loading software store: " + outcome.getError().getMessage());
                     manager.put(StorageConstants.STORE_MODE_PROPERTY, StoreMode.NONE.name());
-                    yield loadKey();
+                    yield loadMasterKey();
                 }
                 manager.put(StorageConstants.STORE_MODE_PROPERTY, StoreMode.SOFTWARE.name());
                 yield outcome.getValue().retrieve(StorageConstants.MASTER_KEY_IDENTIFIER).or(() -> {
@@ -519,10 +520,18 @@ public class ShellApplication {
             );
         }
         if (GenericInteractiveCommandType.CURRENT_VAULT.is(arguments[0])) {
+            Optional<Vault> vault = credentialManager.get().getVault();
+            if (vault.isEmpty()) {
+                return Triplet.of(
+                        LoopInstruction.EXIT,
+                        EvaluationResult.FAILURE,
+                        Message.of("Failed to retrieve authenticated vault", false)
+                );
+            }
             return Triplet.of(
                     LoopInstruction.SKIP,
                     EvaluationResult.SUCCESS,
-                    Message.of("Current vault: " + credentialManager.get().getVault().getName(), true)
+                    Message.of("Current vault: " + vault.get().getName(), true)
             );
         }
         if (GenericInteractiveCommandType.GENERATE_PASSWORD.is(arguments[0])) {

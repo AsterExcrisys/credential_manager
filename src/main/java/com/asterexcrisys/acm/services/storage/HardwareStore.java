@@ -39,13 +39,13 @@ public final class HardwareStore implements Store<SecretKey>, AutoCloseable {
     private final TpmEngine engine;
     private final int policySession;
 
+    // TODO: replace this with actually, properly fetched, known good PCR values
     public HardwareStore(String fileName) throws TpmEngineException, AuthenticationException, PermissionException, IOException {
         storePath = Paths.get(String.format(
                 "./data/%s.tpm2",
                 Objects.requireNonNull(fileName)
         ));
         engine = TpmEngineFactory.createPlatformInstance();
-        // TODO: replace this with actually, properly fetched, known good PCR values
         Map<Integer, String> pcrValues = StorageUtility.registerPcrValues(engine)
                 .orElseThrow(PermissionException::new);
         policySession = Authentication.authenticate(engine, new ValidationStoreFilter(pcrValues))

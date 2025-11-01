@@ -8,6 +8,7 @@
         <outputRelativeToContentRoot value="true" />
         <module name="PasswordManager" />
         <module name="CredentialManager" />
+        <module name="acm" />
       </profile>
     </annotationProcessing>
   </component>

@@ -33,15 +33,15 @@ public class VaultManager implements AutoCloseable {
     private final VaultDatabase database;
     private CredentialManager manager;
 
-    public VaultManager(SecretKey key) throws NullPointerException, DatabaseException {
-        database = new VaultDatabase(Base64.getEncoder().encodeToString(key.getEncoded()));
+    public VaultManager(SecretKey masterKey) throws NullPointerException, DatabaseException {
+        database = new VaultDatabase(Base64.getEncoder().encodeToString(masterKey.getEncoded()));
         manager = null;
         initialize();
     }
 
-    public VaultManager(String masterKey, String sealedSalt) throws NullPointerException, DerivationException, DatabaseException {
+    public VaultManager(String sealedKey, String sealedSalt) throws NullPointerException, DerivationException, DatabaseException {
         database = new VaultDatabase(EncryptionUtility.deriveKey(
-                Objects.requireNonNull(masterKey),
+                Objects.requireNonNull(sealedKey),
                 Base64.getDecoder().decode(Objects.requireNonNull(sealedSalt))
         ).orElseThrow(DerivationException::new));
         manager = null;
@@ -92,9 +92,32 @@ public class VaultManager implements AutoCloseable {
         return database.getAllVaults(false);
     }
 
+    // TODO: make sure to also change SQLite's master key
     public boolean setVault(String name, String oldPassword, String newPassword) {
-        // TODO: implement the change password method
-        return false;
+        if (manager != null) {
+            return false;
+        }
+        if (!authenticate(name, oldPassword)) {
+            return false;
+        }
+        try {
+            Optional<Vault> oldVault = manager.getVault();
+            if (oldVault.isEmpty()) {
+                return false;
+            }
+            Vault newVault = new Vault(name, newPassword, oldVault.get().isLocked());
+            if (!database.saveVault(newVault)) {
+                return false;
+            }
+            return manager.setVault(
+                    newVault.getEncryptor().getSealedSalt(),
+                    newVault.getHashedPassword(),
+                    newPassword
+            );
+        } catch (DerivationException | NoSuchAlgorithmException | HashingException e) {
+            LOGGER.warning("Error setting vault: " + e.getMessage());
+            return false;
+        }
     }
 
     public boolean addVault(String name, String password) {
@@ -159,17 +182,33 @@ public class VaultManager implements AutoCloseable {
         if (manager != null) {
             return false;
         }
-        Optional<byte[]> salt = DatabaseUtility.deconstructImport(file);
+        Optional<byte[]> salt = getVault(name, password).or(() -> {
+            Optional<byte[]> decodedSalt = DatabaseUtility.deconstructImport(file);
+            if (decodedSalt.isEmpty()) {
+                return Optional.empty();
+            }
+            if (!addVault(Base64.getEncoder().encodeToString(decodedSalt.get()), name, password)) {
+                return Optional.empty();
+            }
+            return getVault(name, password);
+        }).map((vault) -> {
+            String encodedSalt = vault.getEncryptor().getSealedSalt();
+            return Base64.getDecoder().decode(encodedSalt);
+        });
         if (salt.isEmpty()) {
-            return false;
-        }
-        if (!addVault(Base64.getEncoder().encodeToString(salt.get()), name, password)) {
             return false;
         }
         if (!authenticate(name, password)) {
             return false;
         }
         return manager.importVault(file, password, salt.get(), false);
+    }
+
+    public boolean exportVault(Path file) {
+        if (manager == null) {
+            return false;
+        }
+        return manager.exportVault(file);
     }
 
     public boolean exportVault(Path file, String name, String password) {
@@ -179,7 +218,7 @@ public class VaultManager implements AutoCloseable {
         if (!authenticate(name, password)) {
             return false;
         }
-        return manager.exportVault(file);
+        return exportVault(file);
     }
 
     public Pair<PasswordStrength, String[]> testGivenPassword(String password) {
@@ -191,6 +230,7 @@ public class VaultManager implements AutoCloseable {
         database.close();
         if (manager != null) {
             manager.close();
+            manager = null;
         }
     }
 
