@@ -1,1 +1,3 @@
-com\asterexcrisys\acm\CredentialManagerTest.class
+com\asterexcrisys\acm\CredentialManagerUnitTests.class
+com\asterexcrisys\acm\TableBuilderUnitTests.class
+com\asterexcrisys\acm\VaultManagerUnitTests.class

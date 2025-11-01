@@ -1,7 +1,7 @@
 package com.asterexcrisys.acm.exceptions;
 
 @SuppressWarnings("unused")
-public class NativeException extends RuntimeException {
+public class NativeException extends Exception {
 
     public NativeException() {
         super();

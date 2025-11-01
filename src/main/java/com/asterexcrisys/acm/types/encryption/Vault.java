@@ -36,14 +36,14 @@ public class Vault {
         isLocked = false;
     }
 
-    public Vault(String sealedSalt, String name, String password, boolean isLocked) throws DerivationException, HashingException, NoSuchAlgorithmException {
+    public Vault(String sealedSalt, String name, String password, boolean isLocked) throws DerivationException, HashingException {
         encryptor = new KeyEncryptor(password, sealedSalt);
         this.name = Objects.requireNonNull(name);
         this.password = HashingUtility.hashPassword(Objects.requireNonNull(password)).orElseThrow(HashingException::new);
         this.isLocked = isLocked;
     }
 
-    public Vault(String sealedSalt, String hashedPassword, String name, String password) throws DerivationException, HashingException, NoSuchAlgorithmException {
+    public Vault(String sealedSalt, String hashedPassword, String name, String password) throws DerivationException {
         encryptor = new KeyEncryptor(password, sealedSalt);
         this.name = Objects.requireNonNull(name);
         this.password = Objects.requireNonNull(hashedPassword);

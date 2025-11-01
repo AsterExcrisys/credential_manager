@@ -27,7 +27,20 @@ public class CredentialManager implements AutoCloseable {
     private final CredentialDatabase database;
     private final PasswordGenerator generator;
 
-    public CredentialManager(String name, String password, String sealedSalt, String hashedPassword) throws NullPointerException, DerivationException, NoSuchAlgorithmException, HashingException, DatabaseException {
+    public CredentialManager(String sealedSalt, String name, String password) throws NullPointerException, DerivationException, NoSuchAlgorithmException, HashingException, DatabaseException {
+        vault = new Vault(sealedSalt, name, password);
+        database = new CredentialDatabase(
+                Objects.requireNonNull(name),
+                EncryptionUtility.deriveKey(
+                        Objects.requireNonNull(password),
+                        Base64.getDecoder().decode(Objects.requireNonNull(sealedSalt))
+                ).orElseThrow(DerivationException::new)
+        );
+        generator = new PasswordGenerator();
+        initialize();
+    }
+
+    public CredentialManager(String sealedSalt, String hashedPassword, String name, String password) throws NullPointerException, DerivationException, NoSuchAlgorithmException, HashingException, DatabaseException {
         vault = new Vault(sealedSalt, hashedPassword, name, password);
         database = new CredentialDatabase(
                 Objects.requireNonNull(name),
@@ -63,7 +76,8 @@ public class CredentialManager implements AutoCloseable {
                             credential.get().getEncryptor().getDecryptedKey(),
                             credential.get().getPlatform(),
                             username,
-                            password
+                            password,
+                            false
                     ),
                     vault.getEncryptor()
             );

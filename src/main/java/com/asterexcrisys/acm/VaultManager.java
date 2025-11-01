@@ -72,10 +72,10 @@ public class VaultManager implements AutoCloseable {
                 return false;
             }
             manager = new CredentialManager(
-                    name,
-                    password,
                     vault.get().getEncryptor().getSealedSalt(),
-                    vault.get().getHashedPassword()
+                    vault.get().getHashedPassword(),
+                    name,
+                    password
             );
             return true;
         } catch (NoSuchAlgorithmException | DerivationException | HashingException | DatabaseException e) {
@@ -92,7 +92,7 @@ public class VaultManager implements AutoCloseable {
         return database.getAllVaults(false);
     }
 
-    public boolean setVault(String name, String password) {
+    public boolean setVault(String name, String oldPassword, String newPassword) {
         // TODO: implement the change password method
         return false;
     }

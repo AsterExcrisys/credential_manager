@@ -45,18 +45,24 @@ public final class CoreEncryptor implements Encryptor {
         if (data == null || data.isBlank()) {
             return Optional.empty();
         }
+        return encrypt(data.getBytes(StandardCharsets.UTF_8));
+    }
+
+    public Optional<String> encrypt(byte[] data) {
+        if (data == null || data.length == 0) {
+            return Optional.empty();
+        }
         try {
             byte[] vector = new byte[EncryptionConstants.INITIALIZATION_VECTOR_SIZE];
             SecureRandom.getInstanceStrong().nextBytes(vector);
             Cipher cipher = Cipher.getInstance(EncryptionConstants.ENCRYPTION_TRANSFORMATION);
             cipher.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(EncryptionConstants.AUTHENTICATION_TAG_SIZE, vector));
-            Optional<byte[]> result = construct(vector, cipher.doFinal(data.getBytes(StandardCharsets.UTF_8)));
+            Optional<byte[]> result = construct(vector, cipher.doFinal(data));
             if (result.isEmpty()) {
                 return Optional.empty();
             }
             return Optional.ofNullable(Base64.getEncoder().encodeToString(result.get()));
-        } catch (NoSuchPaddingException | NoSuchAlgorithmException | InvalidAlgorithmParameterException |
-                 IllegalBlockSizeException | InvalidKeyException | BadPaddingException e) {
+        } catch (NoSuchPaddingException | NoSuchAlgorithmException | InvalidAlgorithmParameterException | IllegalBlockSizeException | InvalidKeyException | BadPaddingException e) {
             LOGGER.warning("Error encrypting data: " + e.getMessage());
             return Optional.empty();
         }
@@ -64,6 +70,13 @@ public final class CoreEncryptor implements Encryptor {
 
     public Optional<String> decrypt(String data) {
         if (data == null || data.isBlank()) {
+            return Optional.empty();
+        }
+        return decrypt(data.getBytes(StandardCharsets.UTF_8));
+    }
+
+    public Optional<String> decrypt(byte[] data) {
+        if (data == null || data.length == 0) {
             return Optional.empty();
         }
         try {
@@ -75,8 +88,7 @@ public final class CoreEncryptor implements Encryptor {
             cipher.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(EncryptionConstants.AUTHENTICATION_TAG_SIZE, pair.get().first()));
             byte[] result = cipher.doFinal(pair.get().second());
             return Optional.of(new String(result, StandardCharsets.UTF_8));
-        } catch (NoSuchPaddingException | IllegalBlockSizeException | NoSuchAlgorithmException |
-                 InvalidAlgorithmParameterException | BadPaddingException | InvalidKeyException e) {
+        } catch (NoSuchPaddingException | IllegalBlockSizeException | NoSuchAlgorithmException | InvalidAlgorithmParameterException | BadPaddingException | InvalidKeyException e) {
             LOGGER.warning("Error decrypting data: " + e.getMessage());
             return Optional.empty();
         }

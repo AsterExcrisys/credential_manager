@@ -44,7 +44,15 @@ public final class KeyEncryptor implements Encryptor {
         return encryptor.encrypt(data);
     }
 
+    public Optional<String> encrypt(byte[] data) {
+        return encryptor.encrypt(data);
+    }
+
     public Optional<String> decrypt(String data) {
+        return encryptor.decrypt(data);
+    }
+
+    public Optional<String> decrypt(byte[] data) {
         return encryptor.decrypt(data);
     }
 

@@ -20,11 +20,16 @@ public class Credential {
         this.password = encryptor.encrypt(Objects.requireNonNull(password)).orElseThrow(EncryptionException::new);
     }
 
-    public Credential(String sealedKey, String platform, String username, String password) throws NullPointerException, EncryptionException {
+    public Credential(String sealedKey, String platform, String username, String password, boolean isEncrypted) throws NullPointerException, EncryptionException {
         encryptor = new GenericEncryptor(sealedKey);
         this.platform = Objects.requireNonNull(platform);
-        this.username = Objects.requireNonNull(username);
-        this.password = Objects.requireNonNull(password);
+        if (isEncrypted) {
+            this.username = Objects.requireNonNull(username);
+            this.password = Objects.requireNonNull(password);
+        } else {
+            this.username = encryptor.encrypt(Objects.requireNonNull(username)).orElseThrow(EncryptionException::new);
+            this.password = encryptor.encrypt(Objects.requireNonNull(password)).orElseThrow(EncryptionException::new);
+        }
     }
 
     public GenericEncryptor getEncryptor() {

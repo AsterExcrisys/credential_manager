@@ -41,7 +41,15 @@ public final class GenericEncryptor implements Encryptor {
         return encryptor.encrypt(data);
     }
 
+    public Optional<String> encrypt(byte[] data) {
+        return encryptor.encrypt(data);
+    }
+
     public Optional<String> decrypt(String data) {
+        return encryptor.decrypt(data);
+    }
+
+    public Optional<String> decrypt(byte[] data) {
         return encryptor.decrypt(data);
     }
 
@@ -60,8 +68,8 @@ public final class GenericEncryptor implements Encryptor {
         if (sealedKey == null || sealedKey.isBlank()) {
             return Optional.empty();
         }
-        byte[] decodedKey = Base64.getDecoder().decode(sealedKey);
-        return Optional.of(new SecretKeySpec(decodedKey, EncryptionConstants.KEY_GENERATION_ALGORITHM));
+        byte[] unsealedKey = Base64.getDecoder().decode(sealedKey);
+        return Optional.of(new SecretKeySpec(unsealedKey, EncryptionConstants.KEY_GENERATION_ALGORITHM));
     }
 
 }

@@ -119,7 +119,8 @@ public final class CredentialDatabase implements Database {
                     key.get(),
                     resultSet.getString("platform"),
                     resultSet.getString("username"),
-                    resultSet.getString("password")
+                    resultSet.getString("password"),
+                    true
             ));
         } catch (SQLException | EncryptionException e) {
             LOGGER.warning("Error retrieving credential: " + e.getMessage());
