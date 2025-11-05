@@ -1,10 +1,9 @@
 package com.asterexcrisys.acm.types.console;
 
-import com.asterexcrisys.acm.services.console.validators.GenericValidator;
-import com.asterexcrisys.acm.services.console.validators.PasswordValidator;
-import com.asterexcrisys.acm.services.console.validators.PathValidator;
-import com.asterexcrisys.acm.services.console.validators.Validator;
+import com.asterexcrisys.acm.services.console.validators.*;
+import com.asterexcrisys.acm.types.encryption.VaultType;
 import java.util.Optional;
+import java.util.Set;
 
 @SuppressWarnings("unused")
 public enum GenericNonInteractiveCommandType implements CommandType {
@@ -19,16 +18,16 @@ public enum GenericNonInteractiveCommandType implements CommandType {
     IMPORT_VAULT(
             "-iv",
             "--import-vault",
-            3,
-            new Class[] {String.class, String.class, String.class},
-            new Validator[] {new PathValidator(), new GenericValidator(), new PasswordValidator()}
+            4,
+            new Class[] {String.class, String.class, String.class, String.class},
+            new Validator[] {new PathValidator(), new EnumerationValidator(Set.of(VaultType.names()), false), new GenericValidator(), new PasswordValidator()}
     ),
     EXPORT_VAULT(
             "-ev",
             "--export-vault",
-            3,
+            4,
             new Class[] {String.class, String.class, String.class},
-            new Validator[] {new PathValidator(), new GenericValidator(), new PasswordValidator()}
+            new Validator[] {new PathValidator(), new EnumerationValidator(Set.of(VaultType.names()), false), new GenericValidator(), new PasswordValidator()}
     ),
     CLEAR_CONTEXT(
             "-cc",

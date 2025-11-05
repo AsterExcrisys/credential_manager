@@ -43,7 +43,7 @@ public final class VaultDatabase implements Database {
 
     public boolean createTable() {
         return database.executeUpdate(
-                "CREATE TABLE IF NOT EXISTS vaults (name TEXT PRIMARY KEY, password TEXT NOT NULL, salt TEXT NOT NULL, isLocked TEXT NOT NULL DEFAULT 'false' COLLATE NOCASE);"
+                "CREATE TABLE IF NOT EXISTS vaults (name TEXT PRIMARY KEY, password TEXT NOT NULL, salt TEXT NOT NULL, is_locked TEXT NOT NULL DEFAULT 'false' COLLATE NOCASE);"
         ) == 0;
     }
 
@@ -84,7 +84,7 @@ public final class VaultDatabase implements Database {
             return false;
         }
         return database.executeUpdate("ATTACH ? AS file KEY ?;", file.toAbsolutePath().toString(), masterKey) == 0
-                && database.executeUpdate("INSERT OR REPLACE INTO vaults (name, password, salt) SELECT v.name, v.salt FROM vaults AS v;") == 0
+                && database.executeUpdate("INSERT OR REPLACE INTO vaults (name, password, salt, is_locked) SELECT v.name, v.password, v.salt, v.isLocked FROM file.vaults AS v;") == 0
                 && database.executeUpdate("DETACH file;") == 0;
     }
 
@@ -93,7 +93,7 @@ public final class VaultDatabase implements Database {
             return false;
         }
         try (ResultSet resultSet = database.executeQuery(
-                "SELECT v.name FROM vaults AS v WHERE v.name = ? AND v.isLocked = ?;",
+                "SELECT v.name FROM vaults AS v WHERE v.name = ? AND v.is_locked = ?;",
                 name,
                 isLocked? Boolean.TRUE.toString():Boolean.FALSE.toString()
         )) {
@@ -109,7 +109,7 @@ public final class VaultDatabase implements Database {
             return Optional.empty();
         }
         try (ResultSet resultSet = database.executeQuery(
-                "SELECT v.name, v.password, v.salt, v.isLocked FROM vaults AS v WHERE v.name = ?;",
+                "SELECT v.name, v.password, v.salt, v.is_locked FROM vaults AS v WHERE v.name = ?;",
                 name
         )) {
             if (resultSet == null || !resultSet.next()) {
@@ -123,7 +123,7 @@ public final class VaultDatabase implements Database {
                     resultSet.getString("password"),
                     resultSet.getString("name"),
                     password,
-                    resultSet.getString("isLocked").equalsIgnoreCase(Boolean.TRUE.toString())
+                    resultSet.getString("is_locked").equalsIgnoreCase(Boolean.TRUE.toString())
             ));
         } catch (SQLException | NoSuchAlgorithmException | DerivationException | HashingException e) {
             LOGGER.warning("Error retrieving vault: " + e.getMessage());
@@ -133,7 +133,7 @@ public final class VaultDatabase implements Database {
 
     public Optional<List<String>> getAllVaults(boolean isLocked) {
         try (ResultSet resultSet = database.executeQuery(
-                "SELECT v.name FROM vaults AS v WHERE v.isLocked = ?;",
+                "SELECT v.name FROM vaults AS v WHERE v.is_locked = ?;",
                 isLocked? Boolean.TRUE.toString():Boolean.FALSE.toString()
         )) {
             List<String> vaults = new ArrayList<>();
@@ -152,7 +152,7 @@ public final class VaultDatabase implements Database {
             return false;
         }
         return database.executeUpdate(
-                "INSERT OR REPLACE INTO vaults (name, password, salt, isLocked) VALUES (?, ?, ?, ?);",
+                "INSERT OR REPLACE INTO vaults (name, password, salt, is_locked) VALUES (?, ?, ?, ?);",
                 vault.getName(),
                 vault.getHashedPassword(),
                 vault.getEncryptor().getSealedSalt(),

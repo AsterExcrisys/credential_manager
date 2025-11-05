@@ -4,7 +4,7 @@ import com.asterexcrisys.acm.services.console.validators.Validator;
 import java.util.Optional;
 
 @SuppressWarnings("unused")
-public sealed interface CommandType permits GenericNonInteractiveCommandType, GenericInteractiveCommandType, VaultCommandType, CredentialCommandType {
+public sealed interface CommandType permits GenericNonInteractiveCommandType, GenericInteractiveCommandType, VaultCommandType, CredentialCommandType, TokenCommandType {
 
     boolean is(String command);
 

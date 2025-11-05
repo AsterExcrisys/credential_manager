@@ -1,6 +1,7 @@
 package com.asterexcrisys.acm.utility;
 
 import com.asterexcrisys.acm.constants.GlobalConstants;
+import com.asterexcrisys.acm.types.storage.OperatingSystem;
 import com.asterexcrisys.acm.types.utility.Outcome;
 import com.asterexcrisys.acm.types.utility.Result;
 import oshi.SystemInfo;
@@ -25,6 +26,20 @@ public final class GlobalUtility {
 
     public static boolean isDebugEnabled() {
         return System.getProperty(GlobalConstants.DEBUG_PROPERTY, Boolean.FALSE.toString()).equalsIgnoreCase(Boolean.TRUE.toString());
+    }
+
+    public static OperatingSystem getOperatingSystem() {
+        String name = System.getProperty("os.name", "unknown").toLowerCase();
+        if (name.contains("windows")) {
+            return OperatingSystem.WINDOWS;
+        }
+        if (name.contains("linux")) {
+            return OperatingSystem.LINUX;
+        }
+        if (name.contains("mac")) {
+            return OperatingSystem.MAC;
+        }
+        return OperatingSystem.UNKNOWN;
     }
 
     public static Optional<String> getSystemIdentifier() {

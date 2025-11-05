@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.logging.Logger;
 import java.util.prefs.BackingStoreException;
@@ -28,18 +29,24 @@ public class ConfigurationManager {
     }
 
     public void addListener(PreferenceChangeListener listener) {
-        configuration.addPreferenceChangeListener(listener);
+        configuration.addPreferenceChangeListener(Objects.requireNonNull(listener));
     }
 
     public void removeListener(PreferenceChangeListener listener) {
-        configuration.removePreferenceChangeListener(listener);
+        configuration.removePreferenceChangeListener(Objects.requireNonNull(listener));
     }
 
     public boolean contains(String key) {
+        if (key == null || key.isBlank()) {
+            return false;
+        }
         return configuration.get(key, null) != null;
     }
 
     public Optional<String> get(String key) {
+        if (key == null || key.isBlank()) {
+            return Optional.empty();
+        }
         String value = configuration.get(key, null);
         if (value == null) {
             return Optional.empty();
@@ -48,10 +55,16 @@ public class ConfigurationManager {
     }
 
     public String get(String key, String defaultValue) {
+        if (key == null || key.isBlank()) {
+            return defaultValue;
+        }
         return configuration.get(key, defaultValue);
     }
 
     public boolean put(String key, String value) {
+        if (key == null || value == null || key.isBlank() || value.isBlank()) {
+            return false;
+        }
         try {
             configuration.put(key, value);
             configuration.flush();
@@ -63,6 +76,9 @@ public class ConfigurationManager {
     }
 
     public boolean remove(String key) {
+        if (key == null || key.isBlank()) {
+            return false;
+        }
         try {
             configuration.remove(key);
             configuration.flush();
@@ -85,6 +101,9 @@ public class ConfigurationManager {
     }
 
     public boolean importConfiguration(InputStream input) {
+        if (input == null) {
+            return false;
+        }
         try {
             Preferences.importPreferences(input);
             return true;
@@ -95,6 +114,9 @@ public class ConfigurationManager {
     }
 
     public boolean exportConfiguration(OutputStream output) {
+        if (output == null) {
+            return false;
+        }
         try {
             configuration.exportNode(output);
             return true;

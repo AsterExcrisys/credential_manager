@@ -1,4 +1,5 @@
 import com.asterexcrisys.acm.CredentialManager;
+import com.asterexcrisys.acm.TokenManager;
 import com.asterexcrisys.acm.VaultManager;
 import com.asterexcrisys.acm.constants.GlobalConstants;
 import com.asterexcrisys.acm.constants.HashingConstants;
@@ -9,8 +10,11 @@ import com.asterexcrisys.acm.services.encryption.GenericEncryptor;
 import com.asterexcrisys.acm.services.encryption.KeyEncryptor;
 import com.asterexcrisys.acm.services.storage.HardwareStore;
 import com.asterexcrisys.acm.services.storage.SoftwareStore;
+import com.asterexcrisys.acm.services.storage.Store;
 import com.asterexcrisys.acm.services.utility.ConfigurationManager;
+import com.asterexcrisys.acm.types.encryption.Token;
 import com.asterexcrisys.acm.types.encryption.Vault;
+import com.asterexcrisys.acm.types.encryption.VaultType;
 import com.asterexcrisys.acm.types.storage.SoftwareStoreType;
 import com.asterexcrisys.acm.types.storage.StoreMode;
 import com.asterexcrisys.acm.types.utility.*;
@@ -40,6 +44,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.time.Instant;
 import java.util.*;
 import java.util.logging.*;
 import java.util.stream.Stream;
@@ -85,22 +90,7 @@ public class ShellApplication {
             return;
         }
         try (VaultManager manager = new VaultManager(masterKey.get())) {
-            switch (checkGenericNonInteractiveCommands(manager, programArguments)) {
-                case Triplet(FlowInstruction instruction, EvaluationResult result, Message message) when instruction == FlowInstruction.TERMINATE -> {
-                    if (!message.isSensitive()) {
-                        LOGGER.log(result.level(), message.content());
-                    }
-                    printMessage(result.level(), message.content());
-                    return;
-                }
-                case Triplet(FlowInstruction instruction, EvaluationResult result, Message message) when message.content() != null -> {
-                    printMessage(result.level(), message.content());
-                }
-                default -> {
-                    // No operation needed
-                }
-            }
-            switch (checkVaultCommands(manager, programArguments)) {
+            switch (checkNonInteractiveCommands(manager, programArguments)) {
                 case Triplet(FlowInstruction instruction, EvaluationResult result, Message message) when instruction == FlowInstruction.TERMINATE -> {
                     if (!message.isSensitive()) {
                         LOGGER.log(result.level(), message.content());
@@ -132,26 +122,7 @@ public class ShellApplication {
                         // No operation needed
                     }
                 }
-                switch (checkGenericInteractiveCommands(manager, shellArguments)) {
-                    case Triplet(LoopInstruction instruction, EvaluationResult result, Message message) when instruction == LoopInstruction.EXIT -> {
-                        if (!message.isSensitive()) {
-                            LOGGER.log(result.level(), message.content());
-                        }
-                        printMessage(result.level(), message.content());
-                        return;
-                    }
-                    case Triplet(LoopInstruction instruction, EvaluationResult result, Message message) when instruction == LoopInstruction.SKIP -> {
-                        printMessage(result.level(), message.content());
-                        continue;
-                    }
-                    case Triplet(LoopInstruction instruction, EvaluationResult result, Message message) when message.content() != null -> {
-                        printMessage(result.level(), message.content());
-                    }
-                    default -> {
-                        // No operation needed
-                    }
-                }
-                switch (checkCredentialCommands(manager, shellArguments)) {
+                switch (checkInteractiveCommands(manager, shellArguments)) {
                     case Triplet(LoopInstruction instruction, EvaluationResult result, Message message) when instruction == LoopInstruction.EXIT -> {
                         if (!message.isSensitive()) {
                             LOGGER.log(result.level(), message.content());
@@ -255,9 +226,17 @@ public class ShellApplication {
         }
     }
 
+    private static String buildTable(CellSize cellSize, List<String> attributes, List<List<String>> records) {
+        try (TableBuilder builder = new TableBuilder(cellSize)) {
+            builder.addAttributes(attributes);
+            builder.addRecords(records);
+            return builder.build();
+        }
+    }
+
+    // TODO: replace StoreMode.SOFTWARE with StoreMode.HARDWARE once TPM2 implementation is ready
     private static Optional<SecretKey> loadMasterKey() {
         ConfigurationManager manager = new ConfigurationManager();
-        // TODO: replace StoreMode.SOFTWARE with StoreMode.HARDWARE once TPM2 implementation is ready
         StoreMode mode = GlobalUtility.ifThrows(() -> {
             return StoreMode.valueOf(manager.get(StorageConstants.STORE_MODE_PROPERTY).orElseThrow());
         }, StoreMode.SOFTWARE);
@@ -273,15 +252,7 @@ public class ShellApplication {
                 }
                 manager.put(StorageConstants.STORE_MODE_PROPERTY, StoreMode.HARDWARE.name());
                 yield outcome.getValue().retrieve(StorageConstants.MASTER_KEY_IDENTIFIER).or(() -> {
-                    Optional<SecretKey> key = GenericEncryptor.generateKey();
-                    if (key.isEmpty()) {
-                        return Optional.empty();
-                    }
-                    boolean isSaved = outcome.getValue().save(StorageConstants.MASTER_KEY_IDENTIFIER, key.get());
-                    if (!isSaved) {
-                        return Optional.empty();
-                    }
-                    return key;
+                    return createMasterKey(outcome.getValue());
                 });
             }
             case SOFTWARE -> {
@@ -299,15 +270,7 @@ public class ShellApplication {
                 }
                 manager.put(StorageConstants.STORE_MODE_PROPERTY, StoreMode.SOFTWARE.name());
                 yield outcome.getValue().retrieve(StorageConstants.MASTER_KEY_IDENTIFIER).or(() -> {
-                    Optional<SecretKey> key = GenericEncryptor.generateKey();
-                    if (key.isEmpty()) {
-                        return Optional.empty();
-                    }
-                    boolean isSaved = outcome.getValue().save(StorageConstants.MASTER_KEY_IDENTIFIER, key.get());
-                    if (!isSaved) {
-                        return Optional.empty();
-                    }
-                    return key;
+                    return createMasterKey(outcome.getValue());
                 });
             }
             case NONE -> {
@@ -324,6 +287,18 @@ public class ShellApplication {
         };
     }
 
+    private static Optional<SecretKey> createMasterKey(Store<SecretKey> store) {
+        Optional<SecretKey> key = GenericEncryptor.generateKey();
+        if (key.isEmpty()) {
+            return Optional.empty();
+        }
+        boolean isSaved = store.save(StorageConstants.MASTER_KEY_IDENTIFIER, key.get());
+        if (!isSaved) {
+            return Optional.empty();
+        }
+        return key;
+    }
+
     private static Triplet<FlowInstruction, EvaluationResult, String> validateArguments(String[] arguments, ShellType type) {
         ShellArgumentParser parser = new ShellArgumentParser(type.filter());
         Outcome<? extends CommandType, String> outcome = parser.parseNew(arguments);
@@ -331,6 +306,26 @@ public class ShellApplication {
             return Triplet.of(FlowInstruction.PROCEED, EvaluationResult.SUCCESS, null);
         }
         return Triplet.of(FlowInstruction.TERMINATE, EvaluationResult.FAILURE, outcome.getError());
+    }
+
+    private static Triplet<FlowInstruction, EvaluationResult, Message> checkNonInteractiveCommands(VaultManager vaultManager, String[] arguments) {
+        Triplet<FlowInstruction, EvaluationResult, Message> result = checkGenericNonInteractiveCommands(vaultManager, arguments);
+        if (result.first() != FlowInstruction.PROCEED) {
+            return result;
+        }
+        return checkVaultCommands(vaultManager, arguments);
+    }
+
+    private static Triplet<LoopInstruction, EvaluationResult, Message> checkInteractiveCommands(VaultManager vaultManager, String[] arguments) {
+        Triplet<LoopInstruction, EvaluationResult, Message> result = checkGenericInteractiveCommands(vaultManager, arguments);
+        if (result.first() != LoopInstruction.CONTINUE) {
+            return result;
+        }
+        result = checkCredentialCommands(vaultManager, arguments);
+        if (result.first() != LoopInstruction.CONTINUE) {
+            return result;
+        }
+        return checkTokenCommands(vaultManager, arguments);
     }
 
     private static Triplet<FlowInstruction, EvaluationResult, Message> checkGenericNonInteractiveCommands(VaultManager manager, String[] arguments) {
@@ -349,7 +344,7 @@ public class ShellApplication {
             );
         }
         if (GenericNonInteractiveCommandType.IMPORT_VAULT.is(arguments[0])) {
-            if (!manager.importVault(Paths.get(arguments[1]), arguments[2], arguments[3])) {
+            if (!manager.importVault(Paths.get(arguments[1]), VaultType.valueOf(arguments[2]), arguments[3], arguments[4])) {
                 return Triplet.of(
                         FlowInstruction.TERMINATE,
                         EvaluationResult.FAILURE,
@@ -363,7 +358,7 @@ public class ShellApplication {
             );
         }
         if (GenericNonInteractiveCommandType.EXPORT_VAULT.is(arguments[0])) {
-            if (!manager.exportVault(Paths.get(arguments[1]), arguments[2], arguments[3])) {
+            if (!manager.exportVault(Paths.get(arguments[1]), VaultType.valueOf(arguments[2]), arguments[3], arguments[4])) {
                 return Triplet.of(
                         FlowInstruction.TERMINATE,
                         EvaluationResult.FAILURE,
@@ -511,7 +506,7 @@ public class ShellApplication {
     }
 
     private static Triplet<LoopInstruction, EvaluationResult, Message> checkGenericInteractiveCommands(VaultManager vaultManager, String[] arguments) {
-        Optional<CredentialManager> credentialManager = vaultManager.getManager();
+        Optional<CredentialManager> credentialManager = vaultManager.getCredentialManager();
         if (credentialManager.isEmpty()) {
             return Triplet.of(
                     LoopInstruction.EXIT,
@@ -572,6 +567,80 @@ public class ShellApplication {
                     ), true)
             );
         }
+        if (GenericInteractiveCommandType.ENCRYPT_TEXT.is(arguments[0])) {
+            Optional<String> encryptedText = vaultManager.getTokenManager().flatMap((tokenManager) -> {
+                return tokenManager.encryptText(arguments[1], arguments[2]);
+            });
+            if (encryptedText.isEmpty()) {
+                return Triplet.of(
+                        LoopInstruction.SKIP,
+                        EvaluationResult.FAILURE,
+                        Message.of("Failed to encrypt text using token with identifier: " + arguments[1], false)
+                );
+            }
+            return Triplet.of(
+                    LoopInstruction.SKIP,
+                    EvaluationResult.SUCCESS,
+                    Message.of("Encrypted text: " + encryptedText.get(), true)
+            );
+        }
+        if (GenericInteractiveCommandType.DECRYPT_TEXT.is(arguments[0])) {
+            Optional<String> decryptedText = vaultManager.getTokenManager().flatMap((tokenManager) -> {
+                return tokenManager.decryptText(arguments[1], arguments[2]);
+            });
+            if (decryptedText.isEmpty()) {
+                return Triplet.of(
+                        LoopInstruction.SKIP,
+                        EvaluationResult.FAILURE,
+                        Message.of("Failed to decrypt text using token with identifier: " + arguments[1], false)
+                );
+            }
+            return Triplet.of(
+                    LoopInstruction.SKIP,
+                    EvaluationResult.SUCCESS,
+                    Message.of("Decrypted text: " + decryptedText.get(), true)
+            );
+        }
+        if (GenericInteractiveCommandType.ENCRYPT_FILE.is(arguments[0])) {
+            boolean isEncrypted = vaultManager.getTokenManager().flatMap((tokenManager) -> {
+                if (!tokenManager.encryptFile(arguments[1], Paths.get(arguments[2]))) {
+                    return Optional.empty();
+                }
+                return Optional.of(tokenManager);
+            }).isPresent();
+            if (!isEncrypted) {
+                return Triplet.of(
+                        LoopInstruction.SKIP,
+                        EvaluationResult.FAILURE,
+                        Message.of("Failed to encrypt file using token with identifier: " + arguments[1], false)
+                );
+            }
+            return Triplet.of(
+                    LoopInstruction.SKIP,
+                    EvaluationResult.SUCCESS,
+                    Message.of("Succeeded to encrypt file using token with identifier: " + arguments[1], true)
+            );
+        }
+        if (GenericInteractiveCommandType.DECRYPT_FILE.is(arguments[0])) {
+            boolean isEncrypted = vaultManager.getTokenManager().flatMap((tokenManager) -> {
+                if (!tokenManager.decryptFile(arguments[1], Paths.get(arguments[2]))) {
+                    return Optional.empty();
+                }
+                return Optional.of(tokenManager);
+            }).isPresent();
+            if (!isEncrypted) {
+                return Triplet.of(
+                        LoopInstruction.SKIP,
+                        EvaluationResult.FAILURE,
+                        Message.of("Failed to decrypt file using token with identifier: " + arguments[1], false)
+                );
+            }
+            return Triplet.of(
+                    LoopInstruction.SKIP,
+                    EvaluationResult.SUCCESS,
+                    Message.of("Succeeded to decrypt file using token with identifier: " + arguments[1], true)
+            );
+        }
         if (GenericInteractiveCommandType.QUIT_SHELL.is(arguments[0]) || GenericInteractiveCommandType.EXIT_SHELL.is(arguments[0])) {
             return Triplet.of(
                     LoopInstruction.EXIT,
@@ -587,7 +656,7 @@ public class ShellApplication {
     }
 
     private static Triplet<LoopInstruction, EvaluationResult, Message> checkCredentialCommands(VaultManager vaultManager, String[] arguments) {
-        Optional<CredentialManager> credentialManager = vaultManager.getManager();
+        Optional<CredentialManager> credentialManager = vaultManager.getCredentialManager();
         if (credentialManager.isEmpty()) {
             return Triplet.of(
                     LoopInstruction.EXIT,
@@ -618,11 +687,13 @@ public class ShellApplication {
                     EvaluationResult.SUCCESS,
                     Message.of(buildTable(
                             CellSize.WRAP_SMALL,
-                            List.of("Platform", "Username", "Password"),
+                            List.of("Platform", "Username", "Password", "Expiration", "Last Modification"),
                             List.of(List.of(
                                     credential.get().getPlatform(),
                                     username.get(),
-                                    password.get()
+                                    password.get(),
+                                    credential.get().getExpiration().map(Instant::toString).orElse("N/A"),
+                                    credential.get().getLastModification().toString()
                             ))
                     ), true)
             );
@@ -709,12 +780,118 @@ public class ShellApplication {
         );
     }
 
-    private static String buildTable(CellSize cellSize, List<String> attributes, List<List<String>> records) {
-        try (TableBuilder builder = new TableBuilder(cellSize)) {
-            builder.addAttributes(attributes);
-            builder.addRecords(records);
-            return builder.build();
+    private static Triplet<LoopInstruction, EvaluationResult, Message> checkTokenCommands(VaultManager vaultManager, String[] arguments) {
+        Optional<TokenManager> tokenManager = vaultManager.getTokenManager();
+        if (tokenManager.isEmpty()) {
+            return Triplet.of(
+                    LoopInstruction.EXIT,
+                    EvaluationResult.FAILURE,
+                    Message.of("No current authenticated vault was found", false)
+            );
         }
+        if (TokenCommandType.GET.is(arguments[0])) {
+            Optional<Token> token = tokenManager.get().getToken(arguments[1]);
+            if (token.isEmpty()) {
+                return Triplet.of(
+                        LoopInstruction.SKIP,
+                        EvaluationResult.FAILURE,
+                        Message.of("No token found with identifier: " + arguments[1], false)
+                );
+            }
+            return Triplet.of(
+                    LoopInstruction.SKIP,
+                    EvaluationResult.SUCCESS,
+                    Message.of(buildTable(
+                            CellSize.WRAP_SMALL,
+                            List.of("Identifier", "Expiration", "Last Modification"),
+                            List.of(List.of(
+                                    token.get().getIdentifier(),
+                                    token.get().getExpiration().map(Instant::toString).orElse("N/A"),
+                                    token.get().getLastModification().toString()
+                            ))
+                    ), true)
+            );
+        }
+        if (TokenCommandType.GET_ALL.is(arguments[0])) {
+            Optional<List<String>> tokens = tokenManager.get().getAllTokens();
+            if (tokens.isEmpty()) {
+                return Triplet.of(
+                        LoopInstruction.SKIP,
+                        EvaluationResult.FAILURE,
+                        Message.of("No token found", false)
+                );
+            }
+            return Triplet.of(
+                    LoopInstruction.SKIP,
+                    EvaluationResult.SUCCESS,
+                    Message.of(buildTable(
+                            CellSize.WRAP_SMALL,
+                            List.of("Identifier"),
+                            tokens.get().stream().map(Collections::singletonList).toList()
+                    ), true)
+            );
+        }
+        if (TokenCommandType.SET.is(arguments[0])) {
+            if (!tokenManager.get().setToken(arguments[1])) {
+                return Triplet.of(
+                        LoopInstruction.SKIP,
+                        EvaluationResult.FAILURE,
+                        Message.of("Failed to set token with identifier: " + arguments[1], false)
+                );
+            }
+            return Triplet.of(
+                    LoopInstruction.SKIP,
+                    EvaluationResult.SUCCESS,
+                    Message.of("Succeeded to set token with identifier: " + arguments[1], false)
+            );
+        }
+        if (TokenCommandType.ADD.is(arguments[0])) {
+            if (!tokenManager.get().addToken(arguments[1])) {
+                return Triplet.of(
+                        LoopInstruction.SKIP,
+                        EvaluationResult.FAILURE,
+                        Message.of("Failed to add token with identifier: " + arguments[1], false)
+                );
+            }
+            return Triplet.of(
+                    LoopInstruction.SKIP,
+                    EvaluationResult.SUCCESS,
+                    Message.of("Succeeded to add token with identifier: " + arguments[1], false)
+            );
+        }
+        if (TokenCommandType.REMOVE.is(arguments[0])) {
+            if (!tokenManager.get().removeToken(arguments[1])) {
+                return Triplet.of(
+                        LoopInstruction.SKIP,
+                        EvaluationResult.FAILURE,
+                        Message.of("Failed to remove token with identifier: " + arguments[1], false)
+                );
+            }
+            return Triplet.of(
+                    LoopInstruction.SKIP,
+                    EvaluationResult.SUCCESS,
+                    Message.of("Succeeded to remove token with identifier: " + arguments[1], false)
+            );
+        }
+        if (TokenCommandType.REMOVE_ALL.is(arguments[0])) {
+            if (!tokenManager.get().removeAllTokens()) {
+                return Triplet.of(
+                        LoopInstruction.SKIP,
+                        EvaluationResult.FAILURE,
+                        Message.of("Failed to remove all tokens", false)
+                );
+            }
+            return Triplet.of(
+                    LoopInstruction.SKIP,
+                    EvaluationResult.SUCCESS,
+                    Message.of("Succeeded to remove all tokens", false)
+            );
+        }
+        return Triplet.of(
+                LoopInstruction.CONTINUE,
+                EvaluationResult.SUCCESS,
+                Message.of(null, false)
+        );
     }
 
 }

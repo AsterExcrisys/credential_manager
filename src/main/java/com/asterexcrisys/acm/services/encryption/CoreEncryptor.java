@@ -1,6 +1,7 @@
 package com.asterexcrisys.acm.services.encryption;
 
 import com.asterexcrisys.acm.constants.EncryptionConstants;
+import com.asterexcrisys.acm.types.encryption.CipherMode;
 import com.asterexcrisys.acm.types.utility.Pair;
 import javax.crypto.*;
 import javax.crypto.spec.GCMParameterSpec;
@@ -56,7 +57,7 @@ public final class CoreEncryptor implements Encryptor {
             byte[] vector = new byte[EncryptionConstants.INITIALIZATION_VECTOR_SIZE];
             SecureRandom.getInstanceStrong().nextBytes(vector);
             Cipher cipher = Cipher.getInstance(EncryptionConstants.ENCRYPTION_TRANSFORMATION);
-            cipher.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(EncryptionConstants.AUTHENTICATION_TAG_SIZE, vector));
+            cipher.init(CipherMode.ENCRYPT.getValue(), key, new GCMParameterSpec(EncryptionConstants.AUTHENTICATION_TAG_SIZE, vector));
             Optional<byte[]> result = construct(vector, cipher.doFinal(data));
             if (result.isEmpty()) {
                 return Optional.empty();
@@ -85,7 +86,7 @@ public final class CoreEncryptor implements Encryptor {
                 return Optional.empty();
             }
             Cipher cipher = Cipher.getInstance(EncryptionConstants.ENCRYPTION_TRANSFORMATION);
-            cipher.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(EncryptionConstants.AUTHENTICATION_TAG_SIZE, pair.get().first()));
+            cipher.init(CipherMode.DECRYPT.getValue(), key, new GCMParameterSpec(EncryptionConstants.AUTHENTICATION_TAG_SIZE, pair.get().first()));
             byte[] result = cipher.doFinal(pair.get().second());
             return Optional.of(new String(result, StandardCharsets.UTF_8));
         } catch (NoSuchPaddingException | IllegalBlockSizeException | NoSuchAlgorithmException | InvalidAlgorithmParameterException | BadPaddingException | InvalidKeyException e) {

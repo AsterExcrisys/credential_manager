@@ -17,7 +17,7 @@ public final class ConsoleUtility {
         }
 
         public static Optional<? extends CommandType> fromCommandName(String value) {
-            Optional<GenericNonInteractiveCommandType> type = GenericNonInteractiveCommandType.fromValue(value);
+            Optional<? extends CommandType> type = GenericNonInteractiveCommandType.fromValue(value);
             if (type.isPresent()) {
                 return type;
             }
@@ -33,11 +33,15 @@ public final class ConsoleUtility {
         }
 
         public static Optional<? extends CommandType> fromCommandName(String value) {
-            Optional<GenericInteractiveCommandType> type = GenericInteractiveCommandType.fromValue(value);
+            Optional<? extends CommandType> type = GenericInteractiveCommandType.fromValue(value);
             if (type.isPresent()) {
                 return type;
             }
-            return CredentialCommandType.fromValue(value);
+            type = CredentialCommandType.fromValue(value);
+            if (type.isPresent()) {
+                return type;
+            }
+            return TokenCommandType.fromValue(value);
         }
 
         public static String[] justifyText(String text, int width) {

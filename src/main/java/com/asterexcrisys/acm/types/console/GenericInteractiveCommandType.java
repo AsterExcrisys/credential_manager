@@ -2,6 +2,7 @@ package com.asterexcrisys.acm.types.console;
 
 import com.asterexcrisys.acm.services.console.validators.GenericValidator;
 import com.asterexcrisys.acm.services.console.validators.IntegerNumberValidator;
+import com.asterexcrisys.acm.services.console.validators.PathValidator;
 import com.asterexcrisys.acm.services.console.validators.Validator;
 import java.util.Optional;
 
@@ -28,6 +29,34 @@ public enum GenericInteractiveCommandType implements CommandType {
             1,
             new Class[] {String.class},
             new Validator[] {new GenericValidator()}
+    ),
+    ENCRYPT_TEXT(
+            "-et",
+            "--encrypt-text",
+            2,
+            new Class[] {String.class, String.class},
+            new Validator[] {new GenericValidator(), new GenericValidator()}
+    ),
+    DECRYPT_TEXT(
+            "-dt",
+            "--decrypt-text",
+            2,
+            new Class[] {String.class, String.class},
+            new Validator[] {new GenericValidator(), new GenericValidator()}
+    ),
+    ENCRYPT_FILE(
+            "-ef",
+            "--encrypt-file",
+            2,
+            new Class[] {String.class, String.class},
+            new Validator[] {new GenericValidator(), new PathValidator()}
+    ),
+    DECRYPT_FILE(
+            "-df",
+            "--decrypt-file",
+            2,
+            new Class[] {String.class, String.class},
+            new Validator[] {new GenericValidator(), new PathValidator()}
     ),
     QUIT_SHELL(
             "-qs",

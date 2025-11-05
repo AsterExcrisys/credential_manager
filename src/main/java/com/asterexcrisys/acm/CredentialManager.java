@@ -15,6 +15,7 @@ import com.asterexcrisys.acm.types.encryption.Credential;
 import com.asterexcrisys.acm.types.utility.PasswordStrength;
 import java.nio.file.Path;
 import java.security.NoSuchAlgorithmException;
+import java.time.Instant;
 import java.util.*;
 import java.util.logging.Logger;
 
@@ -85,6 +86,7 @@ public class CredentialManager implements AutoCloseable {
         }
     }
 
+    // TODO: add a command to check expired credentials/tokens and do not allow them to be seen
     public Optional<Credential> getCredential(String platform) {
         return database.getCredential(platform, vault.getEncryptor());
     }
@@ -94,21 +96,41 @@ public class CredentialManager implements AutoCloseable {
     }
 
     public boolean setCredential(String platform, String username, String password) {
-        Optional<Credential> credential = getCredential(platform);
-        if (credential.isEmpty()) {
+        Optional<Credential> oldCredential = getCredential(platform);
+        if (oldCredential.isEmpty()) {
             return false;
         }
         try {
-            return database.saveCredential(
-                    new Credential(
-                            credential.get().getEncryptor().getDecryptedKey(),
-                            credential.get().getPlatform(),
-                            username,
-                            password,
-                            false
-                    ),
-                    vault.getEncryptor()
+            Credential newCredential = new Credential(
+                    oldCredential.get().getEncryptor().getDecryptedKey(),
+                    oldCredential.get().getPlatform(),
+                    username,
+                    password,
+                    false
             );
+            oldCredential.get().getExpiration().ifPresent(newCredential::setExpiration);
+            return database.saveCredential(newCredential, vault.getEncryptor());
+        } catch (EncryptionException e) {
+            LOGGER.warning("Error updating credential: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public boolean setCredential(String platform, String username, String password, Instant expiration) {
+        Optional<Credential> oldCredential = getCredential(platform);
+        if (oldCredential.isEmpty()) {
+            return false;
+        }
+        try {
+            Credential newCredential = new Credential(
+                    oldCredential.get().getEncryptor().getDecryptedKey(),
+                    oldCredential.get().getPlatform(),
+                    username,
+                    password,
+                    false
+            );
+            newCredential.setExpiration(expiration);
+            return database.saveCredential(newCredential, vault.getEncryptor());
         } catch (EncryptionException e) {
             LOGGER.warning("Error updating credential: " + e.getMessage());
             return false;
@@ -124,6 +146,20 @@ public class CredentialManager implements AutoCloseable {
                     new Credential(platform, username, password),
                     vault.getEncryptor()
             );
+        } catch (EncryptionException e) {
+            LOGGER.warning("Error adding credential: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public boolean addCredential(String platform, String username, String password, Instant expiration) {
+        if (getCredential(platform).isPresent()) {
+            return false;
+        }
+        try {
+            Credential credential = new Credential(platform, username, password);
+            credential.setExpiration(expiration);
+            return database.saveCredential(credential, vault.getEncryptor());
         } catch (EncryptionException e) {
             LOGGER.warning("Error adding credential: " + e.getMessage());
             return false;
@@ -186,10 +222,10 @@ public class CredentialManager implements AutoCloseable {
 
     private void initialize() throws DatabaseException {
         if (!database.connect()) {
-            throw new DatabaseException("Could not connect to database");
+            throw new DatabaseException("Could not connect to credentials database");
         }
         if (!database.createTable()) {
-            throw new DatabaseException("Could not create table on database");
+            throw new DatabaseException("Could not create table on credentials database");
         }
     }
 

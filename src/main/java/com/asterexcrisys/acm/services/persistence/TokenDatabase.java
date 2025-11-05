@@ -3,13 +3,14 @@ package com.asterexcrisys.acm.services.persistence;
 import com.asterexcrisys.acm.constants.PersistenceConstants;
 import com.asterexcrisys.acm.exceptions.EncryptionException;
 import com.asterexcrisys.acm.services.encryption.KeyEncryptor;
-import com.asterexcrisys.acm.types.encryption.Credential;
+import com.asterexcrisys.acm.types.encryption.Token;
 import com.asterexcrisys.acm.utility.DatabaseUtility;
 import com.asterexcrisys.acm.utility.PathUtility;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.sql.*;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -17,14 +18,14 @@ import java.util.Optional;
 import java.util.logging.Logger;
 
 @SuppressWarnings("unused")
-public final class CredentialDatabase implements Database {
+public final class TokenDatabase implements Database {
 
-    private static final Logger LOGGER = Logger.getLogger(CredentialDatabase.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(TokenDatabase.class.getName());
 
     private final CoreDatabase database;
 
-    public CredentialDatabase(String vaultName, String masterKey) throws NullPointerException {
-        database = new CoreDatabase(vaultName, PersistenceConstants.CREDENTIAL_DATABASE, masterKey);
+    public TokenDatabase(String vaultName, String masterKey) throws NullPointerException {
+        database = new CoreDatabase(vaultName, PersistenceConstants.TOKEN_DATABASE, masterKey);
     }
 
     public Optional<Path> getDatabasePath() {
@@ -41,12 +42,12 @@ public final class CredentialDatabase implements Database {
 
     public boolean createTable() {
         return database.executeUpdate(
-                "CREATE TABLE IF NOT EXISTS credentials (platform TEXT PRIMARY KEY, username TEXT NOT NULL, password TEXT NOT NULL, expiration TEXT DEFAULT NULL, last_modification TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%fZ', 'now')), key TEXT NOT NULL);"
+                "CREATE TABLE IF NOT EXISTS tokens (identifier TEXT PRIMARY KEY, key TEXT NOT NULL, expiration TEXT DEFAULT NULL, last_modification TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%fZ', 'now')));"
         ) == 0;
     }
 
     public boolean dropTable() {
-        return database.executeUpdate("DROP TABLE IF EXISTS credentials;") == 0;
+        return database.executeUpdate("DROP TABLE IF EXISTS tokens;") == 0;
     }
 
     public boolean backupTo(Path backupFile) {
@@ -82,33 +83,33 @@ public final class CredentialDatabase implements Database {
             return false;
         }
         return database.executeUpdate("ATTACH ? AS file KEY ?;", file.toAbsolutePath().toString(), masterKey) == 0
-                && database.executeUpdate("INSERT OR REPLACE INTO credentials (platform, username, password, expiration, last_modification, key) SELECT c.platform, c.username, c.password, c.expiration, c.last_modification, c.key FROM file.credentials AS c;") == 0
+                && database.executeUpdate("INSERT OR REPLACE INTO tokens (identifier, key, expiration, last_modification) SELECT t.identifier, t.key, t.expiration, t.last_modification FROM file.tokens AS t;") == 0
                 && database.executeUpdate("DETACH file;") == 0;
     }
 
-    public boolean hasCredential(String platform, boolean isExpired) {
-        if (platform == null || platform.isBlank()) {
+    public boolean hasToken(String identifier, boolean isExpired) {
+        if (identifier == null || identifier.isBlank()) {
             return false;
         }
         try (ResultSet resultSet = database.executeQuery(
-                "SELECT c.platform FROM credentials AS c WHERE c.platform = ? AND (c.expiration IS NULL OR (c.expiration <= STRFTIME('%Y-%m-%dT%H:%M:%fZ', 'now')) = ?);",
-                platform,
+                "SELECT t.identifier FROM tokens AS t WHERE t.identifier = ? AND (c.expiration IS NULL OR (c.expiration <= STRFTIME('%Y-%m-%dT%H:%M:%fZ', 'now')) = ?);",
+                identifier,
                 isExpired? Boolean.FALSE.toString():Boolean.TRUE.toString()
         )) {
             return resultSet != null && resultSet.next();
         } catch (SQLException e) {
-            LOGGER.warning("Error retrieving credential: " + e.getMessage());
+            LOGGER.warning("Error retrieving token: " + e.getMessage());
             return false;
         }
     }
 
-    public Optional<Credential> getCredential(String platform, KeyEncryptor encryptor) {
-        if (platform == null || encryptor == null || platform.isBlank()) {
+    public Optional<Token> getToken(String identifier, KeyEncryptor encryptor) {
+        if (identifier == null || encryptor == null || identifier.isBlank()) {
             return Optional.empty();
         }
         try (ResultSet resultSet = database.executeQuery(
-                "SELECT c.platform, c.username, c.password, c.expiration, c.last_modification, c.key FROM credentials AS c WHERE c.platform = ?;",
-                platform
+                "SELECT t.identifier, t.key, t.expiration, t.last_modification FROM tokens AS t WHERE t.identifier = ?;",
+                identifier
         )) {
             if (resultSet == null || !resultSet.next()) {
                 return Optional.empty();
@@ -117,75 +118,70 @@ public final class CredentialDatabase implements Database {
             if (key.isEmpty()) {
                 return Optional.empty();
             }
-            Credential credential = new Credential(
+            Token token = new Token(
+                    resultSet.getString("identifier"),
                     key.get(),
-                    resultSet.getString("platform"),
-                    resultSet.getString("username"),
-                    resultSet.getString("password"),
-                    Instant.parse(resultSet.getString("last_modification")),
-                    true
+                    Instant.parse(resultSet.getString("last_modification"))
             );
             String expiration = resultSet.getString("expiration");
             if (expiration != null) {
-                credential.setExpiration(Instant.parse(expiration));
+                token.setExpiration(Instant.parse(expiration));
             }
-            return Optional.of(credential);
+            return Optional.of(token);
         } catch (SQLException | EncryptionException e) {
-            LOGGER.warning("Error retrieving credential: " + e.getMessage());
+            LOGGER.warning("Error retrieving token: " + e.getMessage());
             return Optional.empty();
         }
     }
 
-    public Optional<List<String>> getAllCredentials() {
-        try (ResultSet resultSet = database.executeQuery("SELECT c.platform FROM credentials AS c;")) {
-            List<String> credentials = new ArrayList<>();
+    public Optional<List<String>> getAllTokens() {
+        try (ResultSet resultSet = database.executeQuery("SELECT t.identifier FROM tokens AS t;")) {
+            List<String> tokens = new ArrayList<>();
             while (resultSet != null && resultSet.next()) {
-                credentials.add(resultSet.getString("platform"));
+                tokens.add(resultSet.getString("identifier"));
             }
-            return Optional.of(credentials);
+            return Optional.of(tokens);
         } catch (SQLException e) {
-            LOGGER.warning("Error retrieving all credentials: " + e.getMessage());
+            LOGGER.warning("Error retrieving all tokens: " + e.getMessage());
             return Optional.empty();
         }
     }
 
-    public boolean saveCredential(Credential credential, KeyEncryptor encryptor) {
-        if (credential == null || encryptor == null) {
+    public boolean saveToken(Token token, KeyEncryptor encryptor) {
+        if (token == null || encryptor == null) {
             return false;
         }
-        Optional<String> key = credential.getEncryptor().getEncryptedKey(encryptor);
+        Optional<String> key = token.getEncryptor().getEncryptedKey(encryptor);
         if (key.isEmpty()) {
             return false;
         }
         return database.executeUpdate(
-                "INSERT OR REPLACE INTO credentials (platform, username, password, expiration, last_modification, key) VALUES (?, ?, ?, ?, ?, ?);",
-                credential.getPlatform(),
-                credential.getEncryptedUsername(),
-                credential.getEncryptedPassword(),
-                credential.getExpiration().map(Instant::toString).orElse(null),
-                credential.getLastModification().toString(),
-                key.get()
+                "INSERT OR REPLACE INTO tokens (identifier, key, expiration, last_modification) VALUES (?, ?, ?, ?);",
+                token.getIdentifier(),
+                key.get(),
+                token.getExpiration().map(Instant::toString).orElse(null),
+                token.getLastModification().toString()
         ) == 1;
     }
 
-    public boolean removeCredential(String platform) {
-        if (platform == null) {
+    public boolean removeToken(String identifier) {
+        if (identifier == null) {
             return false;
         }
         return database.executeUpdate(
-                "DELETE FROM credentials WHERE platform = ?;",
-                platform
+                "DELETE FROM tokens WHERE identifier = ?;",
+                identifier
         ) == 1;
     }
 
-    public boolean removeAllCredentials() {
-        Optional<List<String>> credentials = getAllCredentials();
-        if (credentials.isEmpty()) {
+    public boolean removeAllTokens() {
+        Optional<List<String>> tokens = getAllTokens();
+        if (tokens.isEmpty()) {
             return false;
         }
         return database.executeUpdate(
-                "DELETE FROM credentials;"
-        ) == credentials.get().size();
+                "DELETE FROM tokens;"
+        ) == tokens.get().size();
     }
 
     public void close() {
